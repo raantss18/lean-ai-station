@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Lean AI Station
+GenericName=Assistant de preuves Lean
+Comment=Prouver des théorèmes Lean 4 avec une IA locale (hors-ligne)
+Exec=@ROOT@/bin/lean-ai-station %f
+Icon=lean-ai-station
+Terminal=false
+Categories=Education;Math;
+Keywords=Lean;Mathlib;preuve;théorème;IA;
+StartupWMClass=lean-ai-station

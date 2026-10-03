@@ -1,0 +1,8 @@
+.venv/
+.venv-convert/
+vendor/
+workspaces/
+logs/
+__pycache__/
+*.pyc
+.pytest_cache/

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Launch Lean AI Station (used by the .desktop entry; no terminal needed). Works from any clone location.
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+export PYTHONPATH="$ROOT/app${PYTHONPATH:+:$PYTHONPATH}"
+exec "$ROOT/.venv/bin/python" -m lean_ai_station "$@"

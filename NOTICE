@@ -1,0 +1,13 @@
+Lean AI Station
+Copyright 2026 Antsa Malala RANIRIAMANJAKA
+Licensed under the Apache License, Version 2.0 (see LICENSE) — the same license as Lean 4.
+
+This project uses or includes material from:
+- Goedel-Prover-V2 (https://github.com/Goedel-LM/Goedel-Prover-V2, Apache-2.0): prompt templates and the
+  error-formatting routine (ported in app/lean_ai_station/leancheck.py; reference copy in
+  docs/goedel_utils_reference.py) and the miniF2F dataset file data/minif2f.jsonl (and data/goedel_test.jsonl).
+- miniF2F (https://github.com/openai/miniF2F, MIT) — original benchmark behind data/minif2f.jsonl.
+- llama.cpp (https://github.com/ggml-org/llama.cpp, MIT) — downloaded and built by install.sh, not vendored.
+- Model weights Goedel-LM/Goedel-Prover-V2-8B (Apache-2.0), GGUF quantization by mradermacher — downloaded by
+  scripts/download_model.sh, not included in this repository.
+- Lean 4 and Mathlib (Apache-2.0) — installed by elan / lake, not included.

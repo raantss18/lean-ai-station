@@ -1,0 +1,725 @@
+{
+ "minutes": 12.0,
+ "cycles": 23,
+ "ok": 23,
+ "gui_rss_first_mb": 113.1,
+ "gui_rss_last_mb": 122.2,
+ "gui_rss_max_mb": 122.2,
+ "vram_min_mb": 7049,
+ "vram_max_mb": 7049,
+ "worst_lag_ms": 350.1,
+ "samples": [
+  {
+   "t": 0.7,
+   "gui_rss_mb": 101.5,
+   "gui_rss_untrimmed_mb": 101.6,
+   "py_objects": 40332,
+   "qobjects": 738,
+   "server_rss_mb": 0.0,
+   "vram_mb": 484,
+   "max_lag_ms": 350.1,
+   "threads": 2
+  },
+  {
+   "t": 15.1,
+   "gui_rss_mb": 113.1,
+   "gui_rss_untrimmed_mb": 113.3,
+   "py_objects": 49066,
+   "qobjects": 750,
+   "server_rss_mb": 908.9,
+   "vram_mb": 7049,
+   "max_lag_ms": 141.4,
+   "threads": 3
+  },
+  {
+   "t": 30.1,
+   "gui_rss_mb": 114.2,
+   "gui_rss_untrimmed_mb": 114.4,
+   "py_objects": 49309,
+   "qobjects": 750,
+   "server_rss_mb": 951.6,
+   "vram_mb": 7049,
+   "max_lag_ms": 19.3,
+   "threads": 4
+  },
+  {
+   "t": 45.1,
+   "gui_rss_mb": 114.5,
+   "gui_rss_untrimmed_mb": 114.7,
+   "py_objects": 49327,
+   "qobjects": 750,
+   "server_rss_mb": 1025.8,
+   "vram_mb": 7049,
+   "max_lag_ms": 20.5,
+   "threads": 3
+  },
+  {
+   "t": 60.1,
+   "gui_rss_mb": 114.7,
+   "gui_rss_untrimmed_mb": 114.9,
+   "py_objects": 49345,
+   "qobjects": 750,
+   "server_rss_mb": 1086.1,
+   "vram_mb": 7049,
+   "max_lag_ms": 20.4,
+   "threads": 3
+  },
+  {
+   "t": 75.1,
+   "gui_rss_mb": 114.9,
+   "gui_rss_untrimmed_mb": 115.2,
+   "py_objects": 49360,
+   "qobjects": 750,
+   "server_rss_mb": 1086.2,
+   "vram_mb": 7049,
+   "max_lag_ms": 20.1,
+   "threads": 3
+  },
+  {
+   "t": 90.1,
+   "gui_rss_mb": 115.1,
+   "gui_rss_untrimmed_mb": 115.3,
+   "py_objects": 49374,
+   "qobjects": 750,
+   "server_rss_mb": 1171.7,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.2,
+   "threads": 3
+  },
+  {
+   "t": 105.1,
+   "gui_rss_mb": 115.2,
+   "gui_rss_untrimmed_mb": 115.5,
+   "py_objects": 49389,
+   "qobjects": 750,
+   "server_rss_mb": 1171.7,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.9,
+   "threads": 3
+  },
+  {
+   "t": 120.1,
+   "gui_rss_mb": 115.4,
+   "gui_rss_untrimmed_mb": 115.8,
+   "py_objects": 49400,
+   "qobjects": 750,
+   "server_rss_mb": 1171.7,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.3,
+   "threads": 3
+  },
+  {
+   "t": 135.1,
+   "gui_rss_mb": 115.6,
+   "gui_rss_untrimmed_mb": 115.9,
+   "py_objects": 49411,
+   "qobjects": 750,
+   "server_rss_mb": 1171.7,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.2,
+   "threads": 3
+  },
+  {
+   "t": 150.1,
+   "gui_rss_mb": 115.6,
+   "gui_rss_untrimmed_mb": 116.1,
+   "py_objects": 49409,
+   "qobjects": 750,
+   "server_rss_mb": 1171.7,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.4,
+   "threads": 2
+  },
+  {
+   "t": 165.1,
+   "gui_rss_mb": 115.7,
+   "gui_rss_untrimmed_mb": 116.2,
+   "py_objects": 49442,
+   "qobjects": 750,
+   "server_rss_mb": 1340.9,
+   "vram_mb": 7049,
+   "max_lag_ms": 19.8,
+   "threads": 3
+  },
+  {
+   "t": 180.1,
+   "gui_rss_mb": 115.9,
+   "gui_rss_untrimmed_mb": 116.1,
+   "py_objects": 49460,
+   "qobjects": 750,
+   "server_rss_mb": 1422.9,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.6,
+   "threads": 3
+  },
+  {
+   "t": 195.1,
+   "gui_rss_mb": 116.2,
+   "gui_rss_untrimmed_mb": 116.3,
+   "py_objects": 49478,
+   "qobjects": 750,
+   "server_rss_mb": 1461.6,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.0,
+   "threads": 3
+  },
+  {
+   "t": 210.1,
+   "gui_rss_mb": 116.4,
+   "gui_rss_untrimmed_mb": 116.6,
+   "py_objects": 49480,
+   "qobjects": 750,
+   "server_rss_mb": 1461.6,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.8,
+   "threads": 2
+  },
+  {
+   "t": 225.1,
+   "gui_rss_mb": 116.6,
+   "gui_rss_untrimmed_mb": 116.8,
+   "py_objects": 49513,
+   "qobjects": 750,
+   "server_rss_mb": 1528.4,
+   "vram_mb": 7049,
+   "max_lag_ms": 20.2,
+   "threads": 3
+  },
+  {
+   "t": 240.1,
+   "gui_rss_mb": 116.9,
+   "gui_rss_untrimmed_mb": 117.0,
+   "py_objects": 49531,
+   "qobjects": 750,
+   "server_rss_mb": 1609.5,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.7,
+   "threads": 3
+  },
+  {
+   "t": 255.1,
+   "gui_rss_mb": 117.0,
+   "gui_rss_untrimmed_mb": 117.3,
+   "py_objects": 49546,
+   "qobjects": 750,
+   "server_rss_mb": 1609.5,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.9,
+   "threads": 3
+  },
+  {
+   "t": 270.1,
+   "gui_rss_mb": 117.2,
+   "gui_rss_untrimmed_mb": 117.5,
+   "py_objects": 49560,
+   "qobjects": 750,
+   "server_rss_mb": 1672.9,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.9,
+   "threads": 3
+  },
+  {
+   "t": 285.1,
+   "gui_rss_mb": 117.4,
+   "gui_rss_untrimmed_mb": 117.6,
+   "py_objects": 49575,
+   "qobjects": 750,
+   "server_rss_mb": 1673.0,
+   "vram_mb": 7049,
+   "max_lag_ms": 23.3,
+   "threads": 3
+  },
+  {
+   "t": 300.1,
+   "gui_rss_mb": 117.5,
+   "gui_rss_untrimmed_mb": 117.9,
+   "py_objects": 49586,
+   "qobjects": 750,
+   "server_rss_mb": 1673.0,
+   "vram_mb": 7049,
+   "max_lag_ms": 23.8,
+   "threads": 3
+  },
+  {
+   "t": 315.1,
+   "gui_rss_mb": 117.5,
+   "gui_rss_untrimmed_mb": 117.9,
+   "py_objects": 49585,
+   "qobjects": 746,
+   "server_rss_mb": 1672.9,
+   "vram_mb": 7049,
+   "max_lag_ms": 24.2,
+   "threads": 2
+  },
+  {
+   "t": 330.1,
+   "gui_rss_mb": 117.9,
+   "gui_rss_untrimmed_mb": 118.0,
+   "py_objects": 49615,
+   "qobjects": 750,
+   "server_rss_mb": 1814.4,
+   "vram_mb": 7049,
+   "max_lag_ms": 33.2,
+   "threads": 3
+  },
+  {
+   "t": 345.1,
+   "gui_rss_mb": 118.0,
+   "gui_rss_untrimmed_mb": 118.3,
+   "py_objects": 49629,
+   "qobjects": 750,
+   "server_rss_mb": 1814.4,
+   "vram_mb": 7049,
+   "max_lag_ms": 27.9,
+   "threads": 3
+  },
+  {
+   "t": 360.1,
+   "gui_rss_mb": 118.1,
+   "gui_rss_untrimmed_mb": 118.5,
+   "py_objects": 49640,
+   "qobjects": 750,
+   "server_rss_mb": 1814.4,
+   "vram_mb": 7049,
+   "max_lag_ms": 34.5,
+   "threads": 3
+  },
+  {
+   "t": 375.1,
+   "gui_rss_mb": 118.2,
+   "gui_rss_untrimmed_mb": 118.6,
+   "py_objects": 49651,
+   "qobjects": 750,
+   "server_rss_mb": 1814.4,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.8,
+   "threads": 3
+  },
+  {
+   "t": 390.1,
+   "gui_rss_mb": 118.2,
+   "gui_rss_untrimmed_mb": 118.6,
+   "py_objects": 49649,
+   "qobjects": 750,
+   "server_rss_mb": 1814.4,
+   "vram_mb": 7049,
+   "max_lag_ms": 28.7,
+   "threads": 2
+  },
+  {
+   "t": 405.1,
+   "gui_rss_mb": 118.3,
+   "gui_rss_untrimmed_mb": 118.8,
+   "py_objects": 49682,
+   "qobjects": 750,
+   "server_rss_mb": 1883.0,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.4,
+   "threads": 3
+  },
+  {
+   "t": 420.1,
+   "gui_rss_mb": 118.6,
+   "gui_rss_untrimmed_mb": 118.7,
+   "py_objects": 49700,
+   "qobjects": 750,
+   "server_rss_mb": 1935.7,
+   "vram_mb": 7049,
+   "max_lag_ms": 20.8,
+   "threads": 3
+  },
+  {
+   "t": 435.1,
+   "gui_rss_mb": 118.7,
+   "gui_rss_untrimmed_mb": 119.0,
+   "py_objects": 49703,
+   "qobjects": 746,
+   "server_rss_mb": 1935.7,
+   "vram_mb": 7049,
+   "max_lag_ms": 32.8,
+   "threads": 2
+  },
+  {
+   "t": 450.1,
+   "gui_rss_mb": 119.0,
+   "gui_rss_untrimmed_mb": 119.3,
+   "py_objects": 49733,
+   "qobjects": 750,
+   "server_rss_mb": 1862.0,
+   "vram_mb": 7049,
+   "max_lag_ms": 19.1,
+   "threads": 3
+  },
+  {
+   "t": 465.1,
+   "gui_rss_mb": 119.4,
+   "gui_rss_untrimmed_mb": 119.4,
+   "py_objects": 49750,
+   "qobjects": 750,
+   "server_rss_mb": 1930.9,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.7,
+   "threads": 3
+  },
+  {
+   "t": 480.1,
+   "gui_rss_mb": 119.5,
+   "gui_rss_untrimmed_mb": 119.8,
+   "py_objects": 49752,
+   "qobjects": 750,
+   "server_rss_mb": 1930.9,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.5,
+   "threads": 2
+  },
+  {
+   "t": 495.1,
+   "gui_rss_mb": 119.7,
+   "gui_rss_untrimmed_mb": 120.0,
+   "py_objects": 49785,
+   "qobjects": 750,
+   "server_rss_mb": 1832.3,
+   "vram_mb": 7049,
+   "max_lag_ms": 30.0,
+   "threads": 3
+  },
+  {
+   "t": 510.1,
+   "gui_rss_mb": 119.9,
+   "gui_rss_untrimmed_mb": 120.1,
+   "py_objects": 49800,
+   "qobjects": 750,
+   "server_rss_mb": 1832.3,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.6,
+   "threads": 3
+  },
+  {
+   "t": 525.1,
+   "gui_rss_mb": 120.0,
+   "gui_rss_untrimmed_mb": 120.4,
+   "py_objects": 49798,
+   "qobjects": 750,
+   "server_rss_mb": 1832.3,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.7,
+   "threads": 2
+  },
+  {
+   "t": 540.1,
+   "gui_rss_mb": 120.2,
+   "gui_rss_untrimmed_mb": 120.5,
+   "py_objects": 49831,
+   "qobjects": 750,
+   "server_rss_mb": 1888.0,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.4,
+   "threads": 3
+  },
+  {
+   "t": 555.1,
+   "gui_rss_mb": 120.4,
+   "gui_rss_untrimmed_mb": 120.7,
+   "py_objects": 49846,
+   "qobjects": 750,
+   "server_rss_mb": 1888.0,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.9,
+   "threads": 3
+  },
+  {
+   "t": 570.1,
+   "gui_rss_mb": 120.5,
+   "gui_rss_untrimmed_mb": 120.9,
+   "py_objects": 49857,
+   "qobjects": 750,
+   "server_rss_mb": 1888.0,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.4,
+   "threads": 3
+  },
+  {
+   "t": 585.1,
+   "gui_rss_mb": 120.7,
+   "gui_rss_untrimmed_mb": 120.9,
+   "py_objects": 49868,
+   "qobjects": 750,
+   "server_rss_mb": 1888.0,
+   "vram_mb": 7049,
+   "max_lag_ms": 25.9,
+   "threads": 3
+  },
+  {
+   "t": 600.1,
+   "gui_rss_mb": 120.8,
+   "gui_rss_untrimmed_mb": 121.1,
+   "py_objects": 49879,
+   "qobjects": 750,
+   "server_rss_mb": 1888.0,
+   "vram_mb": 7049,
+   "max_lag_ms": 21.3,
+   "threads": 3
+  },
+  {
+   "t": 615.1,
+   "gui_rss_mb": 120.8,
+   "gui_rss_untrimmed_mb": 121.2,
+   "py_objects": 49893,
+   "qobjects": 750,
+   "server_rss_mb": 1905.2,
+   "vram_mb": 7049,
+   "max_lag_ms": 23.3,
+   "threads": 3
+  },
+  {
+   "t": 630.1,
+   "gui_rss_mb": 121.0,
+   "gui_rss_untrimmed_mb": 121.4,
+   "py_objects": 49911,
+   "qobjects": 750,
+   "server_rss_mb": 1808.6,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.8,
+   "threads": 3
+  },
+  {
+   "t": 645.1,
+   "gui_rss_mb": 121.1,
+   "gui_rss_untrimmed_mb": 121.4,
+   "py_objects": 49926,
+   "qobjects": 750,
+   "server_rss_mb": 1808.3,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.2,
+   "threads": 3
+  },
+  {
+   "t": 660.1,
+   "gui_rss_mb": 121.2,
+   "gui_rss_untrimmed_mb": 121.6,
+   "py_objects": 49940,
+   "qobjects": 750,
+   "server_rss_mb": 1867.8,
+   "vram_mb": 7049,
+   "max_lag_ms": 27.1,
+   "threads": 3
+  },
+  {
+   "t": 675.1,
+   "gui_rss_mb": 121.4,
+   "gui_rss_untrimmed_mb": 121.6,
+   "py_objects": 49942,
+   "qobjects": 750,
+   "server_rss_mb": 1867.8,
+   "vram_mb": 7049,
+   "max_lag_ms": 35.1,
+   "threads": 2
+  },
+  {
+   "t": 690.1,
+   "gui_rss_mb": 121.6,
+   "gui_rss_untrimmed_mb": 121.8,
+   "py_objects": 49975,
+   "qobjects": 750,
+   "server_rss_mb": 1732.9,
+   "vram_mb": 7049,
+   "max_lag_ms": 36.4,
+   "threads": 3
+  },
+  {
+   "t": 705.1,
+   "gui_rss_mb": 121.7,
+   "gui_rss_untrimmed_mb": 122.1,
+   "py_objects": 49977,
+   "qobjects": 750,
+   "server_rss_mb": 1732.9,
+   "vram_mb": 7049,
+   "max_lag_ms": 29.5,
+   "threads": 2
+  },
+  {
+   "t": 720.1,
+   "gui_rss_mb": 121.9,
+   "gui_rss_untrimmed_mb": 122.3,
+   "py_objects": 50010,
+   "qobjects": 750,
+   "server_rss_mb": 1822.6,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.5,
+   "threads": 3
+  },
+  {
+   "t": 735.1,
+   "gui_rss_mb": 122.1,
+   "gui_rss_untrimmed_mb": 122.6,
+   "py_objects": 50025,
+   "qobjects": 750,
+   "server_rss_mb": 1822.6,
+   "vram_mb": 7049,
+   "max_lag_ms": 23.1,
+   "threads": 3
+  },
+  {
+   "t": 750.1,
+   "gui_rss_mb": 122.2,
+   "gui_rss_untrimmed_mb": 122.7,
+   "py_objects": 50036,
+   "qobjects": 750,
+   "server_rss_mb": 1822.6,
+   "vram_mb": 7049,
+   "max_lag_ms": 23.2,
+   "threads": 3
+  },
+  {
+   "t": 758.8,
+   "gui_rss_mb": 122.2,
+   "gui_rss_untrimmed_mb": 122.7,
+   "py_objects": 50035,
+   "qobjects": 746,
+   "server_rss_mb": 1822.6,
+   "vram_mb": 7049,
+   "max_lag_ms": 27.0,
+   "threads": 2
+  }
+ ],
+ "cycle_log": [
+  {
+   "name": "logique",
+   "ok": true,
+   "seconds": 14.6,
+   "attempts": 1
+  },
+  {
+   "name": "pairs",
+   "ok": true,
+   "seconds": 22.5,
+   "attempts": 1
+  },
+  {
+   "name": "identite",
+   "ok": true,
+   "seconds": 18.5,
+   "attempts": 1
+  },
+  {
+   "name": "amgm",
+   "ok": true,
+   "seconds": 28.2,
+   "attempts": 1
+  },
+  {
+   "name": "cercle",
+   "ok": true,
+   "seconds": 64.7,
+   "attempts": 1
+  },
+  {
+   "name": "triangulaire",
+   "ok": true,
+   "seconds": 26.8,
+   "attempts": 1
+  },
+  {
+   "name": "logique",
+   "ok": true,
+   "seconds": 11.7,
+   "attempts": 1
+  },
+  {
+   "name": "pairs",
+   "ok": true,
+   "seconds": 21.0,
+   "attempts": 1
+  },
+  {
+   "name": "identite",
+   "ok": true,
+   "seconds": 26.1,
+   "attempts": 1
+  },
+  {
+   "name": "amgm",
+   "ok": true,
+   "seconds": 21.0,
+   "attempts": 1
+  },
+  {
+   "name": "cercle",
+   "ok": true,
+   "seconds": 54.4,
+   "attempts": 1
+  },
+  {
+   "name": "triangulaire",
+   "ok": true,
+   "seconds": 78.8,
+   "attempts": 1
+  },
+  {
+   "name": "logique",
+   "ok": true,
+   "seconds": 16.5,
+   "attempts": 1
+  },
+  {
+   "name": "pairs",
+   "ok": true,
+   "seconds": 22.8,
+   "attempts": 1
+  },
+  {
+   "name": "identite",
+   "ok": true,
+   "seconds": 21.9,
+   "attempts": 1
+  },
+  {
+   "name": "amgm",
+   "ok": true,
+   "seconds": 23.2,
+   "attempts": 1
+  },
+  {
+   "name": "cercle",
+   "ok": true,
+   "seconds": 51.8,
+   "attempts": 1
+  },
+  {
+   "name": "triangulaire",
+   "ok": true,
+   "seconds": 79.9,
+   "attempts": 1
+  },
+  {
+   "name": "logique",
+   "ok": true,
+   "seconds": 14.1,
+   "attempts": 1
+  },
+  {
+   "name": "pairs",
+   "ok": true,
+   "seconds": 19.8,
+   "attempts": 1
+  },
+  {
+   "name": "identite",
+   "ok": true,
+   "seconds": 28.1,
+   "attempts": 1
+  },
+  {
+   "name": "amgm",
+   "ok": true,
+   "seconds": 30.1,
+   "attempts": 1
+  },
+  {
+   "name": "cercle",
+   "ok": true,
+   "seconds": 50.2,
+   "attempts": 1
+  }
+ ]
+}
