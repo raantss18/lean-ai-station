@@ -34,14 +34,13 @@ No root change was needed (D1) → no timeshift snapshot taken. Latest existing:
 - lean-prover49: Mathlib built from source (cache 404, D6) → logs/build_prover49.log.
 - lean-current: v4.34.1 cache get → logs/setup_current.log.
 
-## Next (resume here)
-1. Read bench/soak.json (flat RSS/VRAM? worst lag) → ACCEPTANCE.md B.
-2. When prover49 built: `LAS_TEST_WS=lean-prover49 ./run_tests.sh --all`; prove_cli + unshare -rn on lean-prover49; miniF2F mini-bench.
-3. Run tests/test_usability.py (click counts), slow test_process kill9 llama test, real OOM fallback (ctx 40960).
-4. Rerun screenshots with lean-prover49; export_offline.sh to ~/lean-ai-station/export_test (measure sizes, then delete).
-5. Write ACCEPTANCE.md with evidence; final French report.
+## Status (2026-10-03 20:10): mission complete
+- Published: https://github.com/raantss18/lean-ai-station (public, Apache-2.0, clean single-commit `main`;
+  local full history kept in branch `dev-history`, NOT pushed: contains unredacted personal paths).
+- All acceptance items in ACCEPTANCE.md ✅ except "not verified / known limits" listed there.
 
 ## Gotchas
 - NEVER `pkill -f`/`pgrep -f` with a pattern contained in the command itself (use "[x]yz" trick).
-- New Lean prints "declaration uses `sorry`" with backticks.
+- New Lean prints "declaration uses `sorry`" with backticks; Lake 4.9 puts oleans in .lake/build/lib.
 - llama-server needs `-lv 4` to log "offloaded N/M layers to GPU".
+- Never connect a lambda that captures its own emitter (double delete).

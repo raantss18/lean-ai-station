@@ -1,0 +1,9 @@
+[  0.2s] starting 40960 
+[  2.5s] stopped 40960 37/37
+[  2.5s] NOTICE Mémoire graphique insuffisante : nouvel essai avec un contexte de 20480 tokens.
+[  2.5s] starting 20480 
+[  4.0s] stopped 20480 37/37
+[  4.0s] NOTICE Mémoire graphique insuffisante : nouvel essai avec un contexte de 10240 tokens.
+[  4.0s] starting 10240 
+[  5.6s] ready 10240 37/37
+[  5.7s] stopped 10240 37/37

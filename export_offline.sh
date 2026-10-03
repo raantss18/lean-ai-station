@@ -13,6 +13,7 @@ for a in "$@"; do
   case "$a" in --no-models) MODELS=0 ;; --no-current) CURRENT=0 ;; esac
 done
 mkdir -p "$DEST"
+DEST="$(cd "$DEST" && pwd)"   # absolute: the script changes directory while packing
 S="$(cd "$(dirname "$0")" && pwd)"
 TC49=leanprover--lean4---v4.9.0-rc1
 TCCUR=leanprover--lean4---v4.34.1

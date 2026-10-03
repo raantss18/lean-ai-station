@@ -3,6 +3,7 @@
 Machine: RTX 4060 Laptop 8 GB (60 W), Ryzen 7 7735HS, EndeavourOS, kernel 7.2.7. Test log of the full run:
 `logs/full_tests_prover49.log` (not versioned; reproduce with `LAS_TEST_WS=lean-prover49 ./run_tests.sh --all`).
 Result of the last full run: **52 passed** + usability tasks 2/3 re-run after a test fix (**2 passed**) → 54/54.
+After the memory fixes: fast suite 37/37 green, final 30-min soak flat (below).
 
 ## A. Functional
 | Item | Evidence | Status |
@@ -25,12 +26,12 @@ Result of the last full run: **52 passed** + usability tasks 2/3 re-run after a 
 | no orphan processes after quit / kill -9 | `test_kill9_gui_kills_llama_server` (server gone after GUI SIGKILL, `setpriv --pdeathsig`); manual: gone ≤ 300 ms, VRAM back to 484 MiB; SIGTERM quit removes lock + pid file | ✅ |
 | model missing / corrupt | `test_missing_and_corrupt_model`, `test_gguf_corrupt_and_truncated` | ✅ |
 | GGUF too large for VRAM | `test_plan_launch_fallbacks` (ctx shrink, then partial offload, then CPU); real: Q5_K_M auto-loaded with ctx 12288, 37/37 layers (usability task 2) | ✅ |
-| CUDA out-of-memory | automatic retry with smaller ctx / fewer layers (`LlamaServer._finished`); real OOM run: see below | see C-OOM |
+| CUDA out-of-memory (real) | forced ctx 40960 f16 → real CUDA OOM → automatic retries 20480 → 10240 → ready in 5.6 s, 37/37 layers, plain-French notices (`bench/oom_fallback.txt`) | ✅ |
 | disk nearly full warning | `test_disk_nearly_full_warns` | ✅ |
 | GPU unavailable → CPU fallback message | `test_gpu_unavailable_falls_back_to_cpu` | ✅ (simulated) |
 | double click / double launch | `test_double_click_prove_starts_once`, `test_double_launch_forwards_and_exits` | ✅ |
 | power loss (kill -9 GUI) → clean recovery | `test_kill9_gui_recovers_cleanly` (atomic JSON, stale lock detected, « Session restaurée ») | ✅ |
-| 30-minute soak | `bench/soak.json` — see section below | see below |
+| 30-minute soak | `bench/soak.json`: 55 prove cycles, **55/55 proved**, VRAM 7049–7053 MiB, GUI RSS 113.4 → 114.0 MB over the last 27 min (flat), QObject count constant (750), event-loop lag ≈ 20 ms (302 ms once, during model load) | ✅ |
 
 ## C. Efficiency (details in BENCH.md)
 | Metric | Value |
@@ -44,7 +45,7 @@ Result of the last full run: **52 passed** + usability tasks 2/3 re-run after a 
 | RAM idle | GUI 106 MiB, server 882 MiB RSS |
 | Idle CPU | GUI 0.10 %, server 0.20 % |
 | Lean check (lean-prover49) | 9.6 s first (cold), 2.2 s warm; never runs `lake` → no rebuilds |
-| GUI thread never blocked | all I/O via QProcess/QNetworkAccessManager/thread pool; soak worst event-loop lag (see below) |
+| GUI thread never blocked | all I/O via QProcess/QNetworkAccessManager/thread pool; soak event-loop lag ≈ 20 ms during proving |
 | Best alternative compared | BENCH.md §1–3 (FA on/off, KV f16/q8/q4, ubatch, Q4 vs Q5, ctx sizes) |
 
 ## D. Intuitiveness
@@ -64,7 +65,20 @@ batch, top-p…), mismatched « Réparer »/« Recompiler » wording. All visibl
 |---|---|---|
 | README (French, screenshots) | `README.md` | ✅ |
 | uninstall.sh lists exactly what was installed | dry run output (asks before deleting; keeps shared elan toolchains and `~/.cache/mathlib` unless `--toolchains`) | ✅ |
-| export_offline.sh | see section below | see below |
+| export_offline.sh | real run `--no-models`: app 48 MB + elan 855 MB + workspaces 3.3 GB = **4.2 GB** (+ ~5 GB per GGUF), `zstd -t` OK on all archives; `import_offline.sh` restored into a fresh HOME, app started in 0.47 s (bug found and fixed: relative destination path) | ✅ |
 | one-command test suite | `./run_tests.sh` (fast) / `./run_tests.sh --all` | ✅ |
 | git repository, clean history, Apache-2.0 | `LICENSE`, `NOTICE` | ✅ |
 | reproducible install | `install.sh` (pinned llama.cpp commit, pinned model revision + sha256, pinned Mathlib commits) | ✅ |
+
+## Defects found by this acceptance loop and fixed (see DECISIONS D8–D11)
+1. Restart after a server crash loaded the model on the CPU (stale VRAM snapshot) → free VRAM computed excluding our own process.
+2. Race: model load before the first `nvidia-smi` reading → CPU → load now waits for a GPU snapshot.
+3. llama-server host prompt cache up to 8 GiB → bounded to 1 GiB.
+4. Lean 4.9 workspace reported "not built" (old Lake layout) and tests silently fell back to another workspace → both layouts + strict tests.
+5. Segfault from a lambda capturing its emitting QProcess → bound slots.
+6. GUI memory growth (+20 MB / 30 min): one ChatStream leaked per attempt and the hidden server-log widget kept ~6.6 KB per line → streams freed, log buffered as text and rendered only when visible. Re-soak: flat.
+
+## Not verified / known limits
+- GPU-unavailable path is tested by simulation only (the real GPU was not removed).
+- Olympiad-level miniF2F problems often fail with the 8B model (3/8 failures in BENCH §4); long answers (up to ~16k tokens) can take ~8 min per attempt.
+- Quality of Q4_K_M vs Q5_K_M was not compared statistically (choice made on speed + VRAM headroom).

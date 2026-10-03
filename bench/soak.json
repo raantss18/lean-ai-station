@@ -1,988 +1,1365 @@
 {
  "minutes": 30.0,
- "cycles": 52,
- "ok": 52,
- "gui_rss_first_mb": 107.7,
- "gui_rss_last_mb": 128.0,
- "gui_rss_max_mb": 128.0,
+ "cycles": 55,
+ "ok": 55,
+ "gui_rss_first_mb": 111.4,
+ "gui_rss_last_mb": 114.0,
+ "gui_rss_max_mb": 114.0,
  "vram_min_mb": 7049,
- "vram_max_mb": 7049,
- "worst_lag_ms": 273.5,
+ "vram_max_mb": 7053,
+ "worst_lag_ms": 302.6,
  "samples": [
   {
    "t": 0.4,
-   "gui_rss_mb": 101.0,
+   "gui_rss_mb": 101.2,
+   "gui_rss_untrimmed_mb": 101.2,
+   "py_objects": 40329,
+   "qobjects": 738,
    "server_rss_mb": 0.0,
    "vram_mb": 484,
-   "max_lag_ms": 273.5,
+   "max_lag_ms": 302.6,
    "threads": 2
   },
   {
-   "t": 15.2,
-   "gui_rss_mb": 107.7,
-   "server_rss_mb": 880.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 111.0,
-   "threads": 4
-  },
-  {
-   "t": 30.2,
-   "gui_rss_mb": 109.2,
-   "server_rss_mb": 935.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 28.7,
-   "threads": 4
-  },
-  {
-   "t": 45.2,
-   "gui_rss_mb": 109.2,
-   "server_rss_mb": 936.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.5,
-   "threads": 3
-  },
-  {
-   "t": 60.2,
-   "gui_rss_mb": 109.3,
-   "server_rss_mb": 1023.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.6,
-   "threads": 3
-  },
-  {
-   "t": 75.2,
-   "gui_rss_mb": 109.5,
-   "server_rss_mb": 1092.0,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.4,
-   "threads": 3
-  },
-  {
-   "t": 90.2,
-   "gui_rss_mb": 109.6,
-   "server_rss_mb": 1092.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.5,
-   "threads": 3
-  },
-  {
-   "t": 105.2,
-   "gui_rss_mb": 109.8,
-   "server_rss_mb": 1167.1,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.2,
-   "threads": 3
-  },
-  {
-   "t": 120.2,
-   "gui_rss_mb": 110.0,
-   "server_rss_mb": 1167.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.8,
-   "threads": 3
-  },
-  {
-   "t": 135.2,
-   "gui_rss_mb": 110.1,
-   "server_rss_mb": 1168.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.7,
-   "threads": 3
-  },
-  {
-   "t": 150.2,
-   "gui_rss_mb": 110.3,
-   "server_rss_mb": 1168.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.7,
-   "threads": 3
-  },
-  {
-   "t": 165.2,
-   "gui_rss_mb": 110.6,
-   "server_rss_mb": 1168.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.5,
-   "threads": 2
-  },
-  {
-   "t": 180.2,
-   "gui_rss_mb": 110.6,
-   "server_rss_mb": 1379.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 21.8,
-   "threads": 3
-  },
-  {
-   "t": 195.2,
-   "gui_rss_mb": 110.6,
-   "server_rss_mb": 1379.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.9,
-   "threads": 3
-  },
-  {
-   "t": 210.2,
-   "gui_rss_mb": 110.7,
-   "server_rss_mb": 1380.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.7,
-   "threads": 3
-  },
-  {
-   "t": 225.2,
-   "gui_rss_mb": 110.8,
-   "server_rss_mb": 1380.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 29.4,
-   "threads": 3
-  },
-  {
-   "t": 240.2,
-   "gui_rss_mb": 111.0,
-   "server_rss_mb": 1380.6,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.4,
-   "threads": 2
-  },
-  {
-   "t": 255.2,
-   "gui_rss_mb": 111.0,
-   "server_rss_mb": 1584.1,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.5,
-   "threads": 3
-  },
-  {
-   "t": 270.2,
-   "gui_rss_mb": 111.1,
-   "server_rss_mb": 1614.0,
-   "vram_mb": 7049,
-   "max_lag_ms": 23.9,
-   "threads": 3
-  },
-  {
-   "t": 285.2,
+   "t": 15.6,
    "gui_rss_mb": 111.4,
-   "server_rss_mb": 1574.9,
+   "gui_rss_untrimmed_mb": 111.4,
+   "py_objects": 49065,
+   "qobjects": 750,
+   "server_rss_mb": 905.6,
    "vram_mb": 7049,
-   "max_lag_ms": 29.7,
-   "threads": 3
+   "max_lag_ms": 135.6,
+   "threads": 4
   },
   {
-   "t": 300.2,
-   "gui_rss_mb": 111.5,
-   "server_rss_mb": 1576.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 30.5,
-   "threads": 3
-  },
-  {
-   "t": 315.2,
-   "gui_rss_mb": 111.8,
-   "server_rss_mb": 1654.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.3,
-   "threads": 3
-  },
-  {
-   "t": 330.2,
-   "gui_rss_mb": 111.9,
-   "server_rss_mb": 1655.1,
-   "vram_mb": 7049,
-   "max_lag_ms": 29.3,
-   "threads": 3
-  },
-  {
-   "t": 345.2,
-   "gui_rss_mb": 112.1,
-   "server_rss_mb": 1735.8,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.7,
-   "threads": 3
-  },
-  {
-   "t": 360.2,
-   "gui_rss_mb": 112.2,
-   "server_rss_mb": 1736.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.7,
-   "threads": 3
-  },
-  {
-   "t": 375.2,
-   "gui_rss_mb": 112.4,
-   "server_rss_mb": 1736.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 30.3,
-   "threads": 3
-  },
-  {
-   "t": 390.2,
-   "gui_rss_mb": 112.5,
-   "server_rss_mb": 1736.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 21.0,
-   "threads": 2
-  },
-  {
-   "t": 405.2,
-   "gui_rss_mb": 112.7,
-   "server_rss_mb": 1743.0,
-   "vram_mb": 7049,
-   "max_lag_ms": 28.2,
-   "threads": 3
-  },
-  {
-   "t": 420.2,
-   "gui_rss_mb": 112.8,
-   "server_rss_mb": 1743.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 23.0,
-   "threads": 3
-  },
-  {
-   "t": 435.2,
-   "gui_rss_mb": 113.0,
-   "server_rss_mb": 1743.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.4,
-   "threads": 2
-  },
-  {
-   "t": 450.2,
-   "gui_rss_mb": 113.1,
-   "server_rss_mb": 1743.0,
-   "vram_mb": 7049,
-   "max_lag_ms": 16.5,
-   "threads": 2
-  },
-  {
-   "t": 465.2,
-   "gui_rss_mb": 113.3,
-   "server_rss_mb": 1571.0,
-   "vram_mb": 7049,
-   "max_lag_ms": 28.0,
-   "threads": 3
-  },
-  {
-   "t": 480.2,
-   "gui_rss_mb": 113.4,
-   "server_rss_mb": 1571.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.4,
-   "threads": 3
-  },
-  {
-   "t": 495.2,
-   "gui_rss_mb": 113.6,
-   "server_rss_mb": 1663.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 21.9,
-   "threads": 3
-  },
-  {
-   "t": 510.2,
-   "gui_rss_mb": 113.8,
-   "server_rss_mb": 1664.0,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.0,
-   "threads": 2
-  },
-  {
-   "t": 525.2,
-   "gui_rss_mb": 114.0,
-   "server_rss_mb": 1743.6,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.1,
-   "threads": 3
-  },
-  {
-   "t": 540.2,
-   "gui_rss_mb": 114.2,
-   "server_rss_mb": 1610.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.0,
-   "threads": 3
-  },
-  {
-   "t": 555.2,
-   "gui_rss_mb": 114.4,
-   "server_rss_mb": 1611.1,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.3,
-   "threads": 3
-  },
-  {
-   "t": 570.2,
-   "gui_rss_mb": 114.6,
-   "server_rss_mb": 1611.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.6,
-   "threads": 3
-  },
-  {
-   "t": 585.2,
-   "gui_rss_mb": 114.7,
-   "server_rss_mb": 1611.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.3,
-   "threads": 3
-  },
-  {
-   "t": 600.2,
-   "gui_rss_mb": 114.9,
-   "server_rss_mb": 1611.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.1,
-   "threads": 2
-  },
-  {
-   "t": 615.2,
-   "gui_rss_mb": 114.9,
-   "server_rss_mb": 1723.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.0,
-   "threads": 3
-  },
-  {
-   "t": 630.2,
-   "gui_rss_mb": 115.0,
-   "server_rss_mb": 1723.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.9,
-   "threads": 3
-  },
-  {
-   "t": 645.2,
-   "gui_rss_mb": 115.2,
-   "server_rss_mb": 1723.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.9,
-   "threads": 3
-  },
-  {
-   "t": 660.2,
-   "gui_rss_mb": 115.4,
-   "server_rss_mb": 1697.1,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.2,
-   "threads": 3
-  },
-  {
-   "t": 675.2,
-   "gui_rss_mb": 115.4,
-   "server_rss_mb": 1697.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 27.1,
-   "threads": 2
-  },
-  {
-   "t": 690.2,
-   "gui_rss_mb": 115.6,
-   "server_rss_mb": 1749.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 29.7,
-   "threads": 3
-  },
-  {
-   "t": 705.2,
-   "gui_rss_mb": 115.9,
-   "server_rss_mb": 1747.1,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.3,
-   "threads": 3
-  },
-  {
-   "t": 720.2,
-   "gui_rss_mb": 116.0,
-   "server_rss_mb": 1747.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.6,
-   "threads": 3
-  },
-  {
-   "t": 735.2,
-   "gui_rss_mb": 116.2,
-   "server_rss_mb": 1660.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.2,
-   "threads": 3
-  },
-  {
-   "t": 750.2,
-   "gui_rss_mb": 116.7,
-   "server_rss_mb": 1737.6,
-   "vram_mb": 7049,
-   "max_lag_ms": 23.2,
-   "threads": 3
-  },
-  {
-   "t": 765.2,
-   "gui_rss_mb": 116.7,
-   "server_rss_mb": 1737.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.6,
-   "threads": 3
-  },
-  {
-   "t": 780.2,
-   "gui_rss_mb": 116.8,
-   "server_rss_mb": 1738.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.5,
-   "threads": 3
-  },
-  {
-   "t": 795.2,
-   "gui_rss_mb": 117.0,
-   "server_rss_mb": 1738.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.2,
-   "threads": 3
-  },
-  {
-   "t": 810.2,
-   "gui_rss_mb": 117.1,
-   "server_rss_mb": 1743.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.4,
-   "threads": 3
-  },
-  {
-   "t": 825.2,
-   "gui_rss_mb": 117.2,
-   "server_rss_mb": 1743.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.1,
-   "threads": 3
-  },
-  {
-   "t": 840.2,
-   "gui_rss_mb": 117.4,
-   "server_rss_mb": 1743.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.7,
-   "threads": 2
-  },
-  {
-   "t": 855.2,
-   "gui_rss_mb": 117.5,
-   "server_rss_mb": 1765.8,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.5,
-   "threads": 3
-  },
-  {
-   "t": 870.2,
-   "gui_rss_mb": 117.8,
-   "server_rss_mb": 1733.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.3,
-   "threads": 3
-  },
-  {
-   "t": 885.2,
-   "gui_rss_mb": 118.1,
-   "server_rss_mb": 1724.0,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.7,
-   "threads": 3
-  },
-  {
-   "t": 900.2,
-   "gui_rss_mb": 118.2,
-   "server_rss_mb": 1724.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.9,
-   "threads": 3
-  },
-  {
-   "t": 915.2,
-   "gui_rss_mb": 118.5,
-   "server_rss_mb": 1649.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.9,
-   "threads": 3
-  },
-  {
-   "t": 930.2,
-   "gui_rss_mb": 118.6,
-   "server_rss_mb": 1649.8,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.1,
-   "threads": 3
-  },
-  {
-   "t": 945.2,
-   "gui_rss_mb": 118.8,
-   "server_rss_mb": 1725.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.1,
-   "threads": 3
-  },
-  {
-   "t": 960.2,
-   "gui_rss_mb": 119.0,
-   "server_rss_mb": 1725.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.3,
-   "threads": 3
-  },
-  {
-   "t": 975.2,
-   "gui_rss_mb": 119.1,
-   "server_rss_mb": 1725.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.0,
-   "threads": 3
-  },
-  {
-   "t": 990.2,
-   "gui_rss_mb": 119.3,
-   "server_rss_mb": 1725.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.1,
-   "threads": 2
-  },
-  {
-   "t": 1005.2,
-   "gui_rss_mb": 119.4,
-   "server_rss_mb": 1712.8,
-   "vram_mb": 7049,
-   "max_lag_ms": 23.3,
-   "threads": 3
-  },
-  {
-   "t": 1020.2,
-   "gui_rss_mb": 119.5,
-   "server_rss_mb": 1713.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.2,
-   "threads": 3
-  },
-  {
-   "t": 1035.2,
-   "gui_rss_mb": 119.6,
-   "server_rss_mb": 1713.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.0,
-   "threads": 3
-  },
-  {
-   "t": 1050.2,
-   "gui_rss_mb": 119.7,
-   "server_rss_mb": 1713.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.6,
-   "threads": 3
-  },
-  {
-   "t": 1065.2,
-   "gui_rss_mb": 119.9,
-   "server_rss_mb": 1765.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.5,
-   "threads": 3
-  },
-  {
-   "t": 1080.2,
-   "gui_rss_mb": 120.1,
-   "server_rss_mb": 1739.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.6,
-   "threads": 3
-  },
-  {
-   "t": 1095.2,
-   "gui_rss_mb": 120.2,
-   "server_rss_mb": 1739.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 21.0,
-   "threads": 3
-  },
-  {
-   "t": 1110.2,
-   "gui_rss_mb": 120.5,
-   "server_rss_mb": 1740.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 26.5,
-   "threads": 3
-  },
-  {
-   "t": 1125.2,
-   "gui_rss_mb": 120.7,
-   "server_rss_mb": 1740.5,
+   "t": 30.6,
+   "gui_rss_mb": 112.9,
+   "gui_rss_untrimmed_mb": 112.9,
+   "py_objects": 49295,
+   "qobjects": 750,
+   "server_rss_mb": 966.0,
    "vram_mb": 7049,
    "max_lag_ms": 23.1,
-   "threads": 2
-  },
-  {
-   "t": 1140.2,
-   "gui_rss_mb": 120.9,
-   "server_rss_mb": 1662.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.4,
    "threads": 3
   },
   {
-   "t": 1155.2,
-   "gui_rss_mb": 121.1,
-   "server_rss_mb": 1662.8,
+   "t": 45.6,
+   "gui_rss_mb": 112.9,
+   "gui_rss_untrimmed_mb": 112.9,
+   "py_objects": 49303,
+   "qobjects": 750,
+   "server_rss_mb": 1027.2,
    "vram_mb": 7049,
-   "max_lag_ms": 20.0,
-   "threads": 2
-  },
-  {
-   "t": 1170.2,
-   "gui_rss_mb": 121.3,
-   "server_rss_mb": 1756.8,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.5,
+   "max_lag_ms": 21.5,
    "threads": 3
   },
   {
-   "t": 1185.2,
-   "gui_rss_mb": 121.4,
-   "server_rss_mb": 1757.3,
+   "t": 60.6,
+   "gui_rss_mb": 113.0,
+   "gui_rss_untrimmed_mb": 113.0,
+   "py_objects": 49308,
+   "qobjects": 750,
+   "server_rss_mb": 1027.3,
    "vram_mb": 7049,
-   "max_lag_ms": 18.2,
+   "max_lag_ms": 22.3,
    "threads": 3
   },
   {
-   "t": 1200.2,
-   "gui_rss_mb": 121.5,
-   "server_rss_mb": 1757.6,
+   "t": 75.6,
+   "gui_rss_mb": 113.0,
+   "gui_rss_untrimmed_mb": 113.0,
+   "py_objects": 49312,
+   "qobjects": 750,
+   "server_rss_mb": 1119.0,
    "vram_mb": 7049,
-   "max_lag_ms": 19.4,
+   "max_lag_ms": 22.1,
    "threads": 3
   },
   {
-   "t": 1215.2,
-   "gui_rss_mb": 121.7,
-   "server_rss_mb": 1757.6,
+   "t": 90.6,
+   "gui_rss_mb": 113.0,
+   "gui_rss_untrimmed_mb": 113.0,
+   "py_objects": 49317,
+   "qobjects": 750,
+   "server_rss_mb": 1119.0,
    "vram_mb": 7049,
-   "max_lag_ms": 17.9,
+   "max_lag_ms": 20.6,
    "threads": 3
   },
   {
-   "t": 1230.2,
-   "gui_rss_mb": 121.9,
-   "server_rss_mb": 1757.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.6,
-   "threads": 2
-  },
-  {
-   "t": 1245.2,
-   "gui_rss_mb": 122.0,
-   "server_rss_mb": 1740.8,
-   "vram_mb": 7049,
-   "max_lag_ms": 23.7,
-   "threads": 3
-  },
-  {
-   "t": 1260.2,
-   "gui_rss_mb": 122.0,
-   "server_rss_mb": 1740.8,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.8,
-   "threads": 3
-  },
-  {
-   "t": 1275.2,
-   "gui_rss_mb": 122.1,
-   "server_rss_mb": 1740.8,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.3,
-   "threads": 2
-  },
-  {
-   "t": 1290.2,
-   "gui_rss_mb": 122.3,
-   "server_rss_mb": 1720.1,
-   "vram_mb": 7049,
-   "max_lag_ms": 16.2,
-   "threads": 2
-  },
-  {
-   "t": 1305.2,
-   "gui_rss_mb": 122.5,
-   "server_rss_mb": 1764.0,
-   "vram_mb": 7049,
-   "max_lag_ms": 16.3,
-   "threads": 3
-  },
-  {
-   "t": 1320.2,
-   "gui_rss_mb": 122.8,
-   "server_rss_mb": 1760.8,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.7,
-   "threads": 3
-  },
-  {
-   "t": 1335.2,
-   "gui_rss_mb": 123.0,
-   "server_rss_mb": 1760.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.1,
-   "threads": 2
-  },
-  {
-   "t": 1350.2,
-   "gui_rss_mb": 123.2,
-   "server_rss_mb": 1683.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 24.7,
-   "threads": 3
-  },
-  {
-   "t": 1365.2,
-   "gui_rss_mb": 123.4,
-   "server_rss_mb": 1683.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.3,
-   "threads": 2
-  },
-  {
-   "t": 1380.2,
-   "gui_rss_mb": 123.6,
-   "server_rss_mb": 1761.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.5,
-   "threads": 3
-  },
-  {
-   "t": 1395.2,
-   "gui_rss_mb": 123.7,
-   "server_rss_mb": 1761.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.1,
-   "threads": 3
-  },
-  {
-   "t": 1410.2,
-   "gui_rss_mb": 123.9,
-   "server_rss_mb": 1761.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.4,
-   "threads": 2
-  },
-  {
-   "t": 1425.2,
-   "gui_rss_mb": 124.0,
-   "server_rss_mb": 1702.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.3,
-   "threads": 3
-  },
-  {
-   "t": 1440.2,
-   "gui_rss_mb": 124.1,
-   "server_rss_mb": 1702.7,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.2,
-   "threads": 3
-  },
-  {
-   "t": 1455.2,
-   "gui_rss_mb": 124.2,
-   "server_rss_mb": 1702.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 21.2,
-   "threads": 3
-  },
-  {
-   "t": 1470.2,
-   "gui_rss_mb": 124.4,
-   "server_rss_mb": 1702.9,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.8,
-   "threads": 3
-  },
-  {
-   "t": 1485.2,
-   "gui_rss_mb": 124.5,
-   "server_rss_mb": 1703.1,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.5,
-   "threads": 3
-  },
-  {
-   "t": 1500.2,
-   "gui_rss_mb": 124.6,
-   "server_rss_mb": 1684.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.2,
-   "threads": 3
-  },
-  {
-   "t": 1515.2,
-   "gui_rss_mb": 124.7,
-   "server_rss_mb": 1734.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.2,
-   "threads": 3
-  },
-  {
-   "t": 1530.2,
-   "gui_rss_mb": 124.8,
-   "server_rss_mb": 1734.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.8,
-   "threads": 3
-  },
-  {
-   "t": 1545.2,
-   "gui_rss_mb": 125.4,
-   "server_rss_mb": 1597.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.3,
-   "threads": 3
-  },
-  {
-   "t": 1560.2,
-   "gui_rss_mb": 125.4,
-   "server_rss_mb": 1597.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 24.8,
-   "threads": 3
-  },
-  {
-   "t": 1575.2,
-   "gui_rss_mb": 125.5,
-   "server_rss_mb": 1685.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.4,
-   "threads": 3
-  },
-  {
-   "t": 1590.2,
-   "gui_rss_mb": 125.7,
-   "server_rss_mb": 1742.2,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.6,
-   "threads": 3
-  },
-  {
-   "t": 1605.2,
-   "gui_rss_mb": 125.9,
-   "server_rss_mb": 1742.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.2,
-   "threads": 3
-  },
-  {
-   "t": 1620.2,
-   "gui_rss_mb": 126.1,
-   "server_rss_mb": 1742.3,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.3,
-   "threads": 3
-  },
-  {
-   "t": 1635.2,
-   "gui_rss_mb": 126.2,
-   "server_rss_mb": 1745.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.9,
-   "threads": 3
-  },
-  {
-   "t": 1650.2,
-   "gui_rss_mb": 126.3,
-   "server_rss_mb": 1745.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.9,
-   "threads": 3
-  },
-  {
-   "t": 1665.2,
-   "gui_rss_mb": 126.4,
-   "server_rss_mb": 1745.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.2,
-   "threads": 3
-  },
-  {
-   "t": 1680.2,
-   "gui_rss_mb": 126.6,
-   "server_rss_mb": 1745.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 20.1,
-   "threads": 3
-  },
-  {
-   "t": 1695.2,
-   "gui_rss_mb": 126.7,
-   "server_rss_mb": 1745.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.0,
-   "threads": 3
-  },
-  {
-   "t": 1710.2,
-   "gui_rss_mb": 126.9,
-   "server_rss_mb": 1745.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 19.0,
-   "threads": 3
-  },
-  {
-   "t": 1725.2,
-   "gui_rss_mb": 127.3,
-   "server_rss_mb": 1745.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 21.8,
-   "threads": 2
-  },
-  {
-   "t": 1740.2,
-   "gui_rss_mb": 127.3,
-   "server_rss_mb": 1756.4,
-   "vram_mb": 7049,
-   "max_lag_ms": 18.1,
-   "threads": 2
-  },
-  {
-   "t": 1755.2,
-   "gui_rss_mb": 127.4,
-   "server_rss_mb": 1679.5,
-   "vram_mb": 7049,
-   "max_lag_ms": 17.8,
-   "threads": 3
-  },
-  {
-   "t": 1770.2,
-   "gui_rss_mb": 127.4,
-   "server_rss_mb": 1740.7,
+   "t": 105.6,
+   "gui_rss_mb": 113.1,
+   "gui_rss_untrimmed_mb": 113.1,
+   "py_objects": 49321,
+   "qobjects": 750,
+   "server_rss_mb": 1208.7,
    "vram_mb": 7049,
    "max_lag_ms": 20.8,
    "threads": 3
   },
   {
-   "t": 1785.2,
-   "gui_rss_mb": 127.7,
-   "server_rss_mb": 1587.8,
+   "t": 120.6,
+   "gui_rss_mb": 113.1,
+   "gui_rss_untrimmed_mb": 113.1,
+   "py_objects": 49326,
+   "qobjects": 750,
+   "server_rss_mb": 1208.7,
    "vram_mb": 7049,
-   "max_lag_ms": 20.9,
+   "max_lag_ms": 21.6,
    "threads": 3
   },
   {
-   "t": 1800.2,
-   "gui_rss_mb": 127.8,
-   "server_rss_mb": 1587.8,
+   "t": 135.6,
+   "gui_rss_mb": 113.1,
+   "gui_rss_untrimmed_mb": 113.1,
+   "py_objects": 49327,
+   "qobjects": 750,
+   "server_rss_mb": 1208.7,
    "vram_mb": 7049,
-   "max_lag_ms": 19.3,
+   "max_lag_ms": 22.6,
    "threads": 3
   },
   {
-   "t": 1812.4,
-   "gui_rss_mb": 128.0,
-   "server_rss_mb": 1587.8,
+   "t": 150.6,
+   "gui_rss_mb": 113.1,
+   "gui_rss_untrimmed_mb": 113.1,
+   "py_objects": 49331,
+   "qobjects": 750,
+   "server_rss_mb": 1329.7,
    "vram_mb": 7049,
+   "max_lag_ms": 21.5,
+   "threads": 3
+  },
+  {
+   "t": 165.6,
+   "gui_rss_mb": 113.1,
+   "gui_rss_untrimmed_mb": 113.1,
+   "py_objects": 49336,
+   "qobjects": 750,
+   "server_rss_mb": 1329.7,
+   "vram_mb": 7049,
+   "max_lag_ms": 23.1,
+   "threads": 3
+  },
+  {
+   "t": 180.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49324,
+   "qobjects": 750,
+   "server_rss_mb": 1329.7,
+   "vram_mb": 7049,
+   "max_lag_ms": 22.1,
+   "threads": 2
+  },
+  {
+   "t": 195.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49333,
+   "qobjects": 746,
+   "server_rss_mb": 1426.6,
+   "vram_mb": 7049,
+   "max_lag_ms": 20.6,
+   "threads": 2
+  },
+  {
+   "t": 210.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49353,
+   "qobjects": 750,
+   "server_rss_mb": 1465.9,
+   "vram_mb": 7049,
+   "max_lag_ms": 20.4,
+   "threads": 3
+  },
+  {
+   "t": 225.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49364,
+   "qobjects": 750,
+   "server_rss_mb": 1466.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 24.0,
+   "threads": 3
+  },
+  {
+   "t": 240.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49368,
+   "qobjects": 750,
+   "server_rss_mb": 1466.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.6,
+   "threads": 3
+  },
+  {
+   "t": 255.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49367,
+   "qobjects": 750,
+   "server_rss_mb": 1655.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.5,
+   "threads": 3
+  },
+  {
+   "t": 270.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49359,
+   "qobjects": 750,
+   "server_rss_mb": 1655.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.8,
+   "threads": 2
+  },
+  {
+   "t": 285.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49382,
+   "qobjects": 750,
+   "server_rss_mb": 1715.8,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.6,
+   "threads": 3
+  },
+  {
+   "t": 300.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49390,
+   "qobjects": 750,
+   "server_rss_mb": 1784.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 28.8,
+   "threads": 3
+  },
+  {
+   "t": 315.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49395,
+   "qobjects": 750,
+   "server_rss_mb": 1784.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.4,
+   "threads": 3
+  },
+  {
+   "t": 330.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49396,
+   "qobjects": 750,
+   "server_rss_mb": 1784.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.0,
+   "threads": 3
+  },
+  {
+   "t": 345.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49384,
+   "qobjects": 750,
+   "server_rss_mb": 1784.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.5,
+   "threads": 2
+  },
+  {
+   "t": 360.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49407,
+   "qobjects": 750,
+   "server_rss_mb": 1916.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.4,
+   "threads": 3
+  },
+  {
+   "t": 375.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49412,
+   "qobjects": 750,
+   "server_rss_mb": 1916.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.1,
+   "threads": 3
+  },
+  {
+   "t": 390.6,
+   "gui_rss_mb": 113.4,
+   "gui_rss_untrimmed_mb": 113.4,
+   "py_objects": 49413,
+   "qobjects": 750,
+   "server_rss_mb": 1916.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.7,
+   "threads": 3
+  },
+  {
+   "t": 405.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49417,
+   "qobjects": 750,
+   "server_rss_mb": 1812.5,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.9,
+   "threads": 3
+  },
+  {
+   "t": 420.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49425,
+   "qobjects": 750,
+   "server_rss_mb": 1860.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.6,
+   "threads": 3
+  },
+  {
+   "t": 435.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49417,
+   "qobjects": 750,
+   "server_rss_mb": 1860.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.6,
+   "threads": 2
+  },
+  {
+   "t": 450.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49440,
+   "qobjects": 750,
+   "server_rss_mb": 1843.5,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.0,
+   "threads": 3
+  },
+  {
+   "t": 465.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49448,
+   "qobjects": 750,
+   "server_rss_mb": 1902.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 29.1,
+   "threads": 3
+  },
+  {
+   "t": 480.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49453,
+   "qobjects": 750,
+   "server_rss_mb": 1902.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.6,
+   "threads": 3
+  },
+  {
+   "t": 495.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49457,
+   "qobjects": 750,
+   "server_rss_mb": 1857.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.3,
+   "threads": 3
+  },
+  {
+   "t": 510.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49462,
+   "qobjects": 750,
+   "server_rss_mb": 1857.3,
+   "vram_mb": 7053,
    "max_lag_ms": 21.7,
+   "threads": 3
+  },
+  {
+   "t": 525.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49463,
+   "qobjects": 750,
+   "server_rss_mb": 1857.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 25.6,
+   "threads": 3
+  },
+  {
+   "t": 540.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49451,
+   "qobjects": 750,
+   "server_rss_mb": 1857.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.7,
+   "threads": 2
+  },
+  {
+   "t": 555.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49474,
+   "qobjects": 750,
+   "server_rss_mb": 1918.4,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.7,
+   "threads": 3
+  },
+  {
+   "t": 570.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49479,
+   "qobjects": 750,
+   "server_rss_mb": 1918.4,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.0,
+   "threads": 3
+  },
+  {
+   "t": 585.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49480,
+   "qobjects": 750,
+   "server_rss_mb": 1918.4,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.5,
+   "threads": 3
+  },
+  {
+   "t": 600.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49468,
+   "qobjects": 750,
+   "server_rss_mb": 1918.4,
+   "vram_mb": 7053,
+   "max_lag_ms": 25.6,
+   "threads": 2
+  },
+  {
+   "t": 615.6,
+   "gui_rss_mb": 113.5,
+   "gui_rss_untrimmed_mb": 113.5,
+   "py_objects": 49491,
+   "qobjects": 750,
+   "server_rss_mb": 1896.1,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.2,
+   "threads": 3
+  },
+  {
+   "t": 630.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49499,
+   "qobjects": 750,
+   "server_rss_mb": 1886.4,
+   "vram_mb": 7053,
+   "max_lag_ms": 24.3,
+   "threads": 3
+  },
+  {
+   "t": 645.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49507,
+   "qobjects": 750,
+   "server_rss_mb": 1873.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.1,
+   "threads": 3
+  },
+  {
+   "t": 660.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49500,
+   "qobjects": 746,
+   "server_rss_mb": 1873.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 24.1,
+   "threads": 2
+  },
+  {
+   "t": 675.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49520,
+   "qobjects": 750,
+   "server_rss_mb": 1813.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 19.0,
+   "threads": 3
+  },
+  {
+   "t": 690.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49527,
+   "qobjects": 750,
+   "server_rss_mb": 1889.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.9,
+   "threads": 3
+  },
+  {
+   "t": 705.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49532,
+   "qobjects": 750,
+   "server_rss_mb": 1889.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.8,
+   "threads": 3
+  },
+  {
+   "t": 720.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49520,
+   "qobjects": 750,
+   "server_rss_mb": 1889.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.3,
+   "threads": 2
+  },
+  {
+   "t": 735.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49543,
+   "qobjects": 750,
+   "server_rss_mb": 1844.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 18.9,
+   "threads": 3
+  },
+  {
+   "t": 750.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49548,
+   "qobjects": 750,
+   "server_rss_mb": 1844.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.6,
+   "threads": 3
+  },
+  {
+   "t": 765.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49536,
+   "qobjects": 750,
+   "server_rss_mb": 1844.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.3,
+   "threads": 2
+  },
+  {
+   "t": 780.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49559,
+   "qobjects": 750,
+   "server_rss_mb": 1919.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.7,
+   "threads": 3
+  },
+  {
+   "t": 795.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49567,
+   "qobjects": 750,
+   "server_rss_mb": 1903.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.5,
+   "threads": 3
+  },
+  {
+   "t": 810.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49575,
+   "qobjects": 750,
+   "server_rss_mb": 1911.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.1,
+   "threads": 3
+  },
+  {
+   "t": 825.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49580,
+   "qobjects": 750,
+   "server_rss_mb": 1911.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.1,
+   "threads": 3
+  },
+  {
+   "t": 840.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49568,
+   "qobjects": 750,
+   "server_rss_mb": 1911.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.6,
+   "threads": 2
+  },
+  {
+   "t": 855.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49591,
+   "qobjects": 750,
+   "server_rss_mb": 1771.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 18.6,
+   "threads": 3
+  },
+  {
+   "t": 870.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49599,
+   "qobjects": 750,
+   "server_rss_mb": 1832.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.8,
+   "threads": 3
+  },
+  {
+   "t": 885.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49604,
+   "qobjects": 750,
+   "server_rss_mb": 1832.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.5,
+   "threads": 3
+  },
+  {
+   "t": 900.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49592,
+   "qobjects": 750,
+   "server_rss_mb": 1832.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.4,
+   "threads": 2
+  },
+  {
+   "t": 915.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49615,
+   "qobjects": 750,
+   "server_rss_mb": 1776.8,
+   "vram_mb": 7053,
+   "max_lag_ms": 19.9,
+   "threads": 3
+  },
+  {
+   "t": 930.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49620,
+   "qobjects": 750,
+   "server_rss_mb": 1776.8,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.5,
+   "threads": 3
+  },
+  {
+   "t": 945.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49621,
+   "qobjects": 750,
+   "server_rss_mb": 1776.8,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.2,
+   "threads": 3
+  },
+  {
+   "t": 960.6,
+   "gui_rss_mb": 113.8,
+   "gui_rss_untrimmed_mb": 113.8,
+   "py_objects": 49622,
+   "qobjects": 750,
+   "server_rss_mb": 1776.8,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.1,
+   "threads": 3
+  },
+  {
+   "t": 975.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49610,
+   "qobjects": 750,
+   "server_rss_mb": 1776.8,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.8,
+   "threads": 2
+  },
+  {
+   "t": 990.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49633,
+   "qobjects": 750,
+   "server_rss_mb": 1911.5,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.1,
+   "threads": 3
+  },
+  {
+   "t": 1005.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49641,
+   "qobjects": 750,
+   "server_rss_mb": 1901.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.0,
+   "threads": 3
+  },
+  {
+   "t": 1020.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49646,
+   "qobjects": 750,
+   "server_rss_mb": 1901.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.6,
+   "threads": 3
+  },
+  {
+   "t": 1035.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49650,
+   "qobjects": 750,
+   "server_rss_mb": 1904.6,
+   "vram_mb": 7053,
+   "max_lag_ms": 24.9,
+   "threads": 3
+  },
+  {
+   "t": 1050.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49642,
+   "qobjects": 750,
+   "server_rss_mb": 1904.6,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.8,
+   "threads": 2
+  },
+  {
+   "t": 1065.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49665,
+   "qobjects": 750,
+   "server_rss_mb": 1904.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.7,
+   "threads": 3
+  },
+  {
+   "t": 1080.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49673,
+   "qobjects": 750,
+   "server_rss_mb": 1859.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.3,
+   "threads": 3
+  },
+  {
+   "t": 1095.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49678,
+   "qobjects": 750,
+   "server_rss_mb": 1859.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.5,
+   "threads": 3
+  },
+  {
+   "t": 1110.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49679,
+   "qobjects": 750,
+   "server_rss_mb": 1859.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.2,
+   "threads": 3
+  },
+  {
+   "t": 1125.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49667,
+   "qobjects": 750,
+   "server_rss_mb": 1859.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.7,
+   "threads": 2
+  },
+  {
+   "t": 1140.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49690,
+   "qobjects": 750,
+   "server_rss_mb": 1876.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.4,
+   "threads": 3
+  },
+  {
+   "t": 1155.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49695,
+   "qobjects": 750,
+   "server_rss_mb": 1876.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.7,
+   "threads": 3
+  },
+  {
+   "t": 1170.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49699,
+   "qobjects": 750,
+   "server_rss_mb": 1904.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.0,
+   "threads": 3
+  },
+  {
+   "t": 1185.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49707,
+   "qobjects": 750,
+   "server_rss_mb": 1904.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.1,
+   "threads": 3
+  },
+  {
+   "t": 1200.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49700,
+   "qobjects": 746,
+   "server_rss_mb": 1904.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.3,
+   "threads": 2
+  },
+  {
+   "t": 1215.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49720,
+   "qobjects": 750,
+   "server_rss_mb": 1866.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.4,
+   "threads": 3
+  },
+  {
+   "t": 1230.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49727,
+   "qobjects": 750,
+   "server_rss_mb": 1883.6,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.8,
+   "threads": 3
+  },
+  {
+   "t": 1245.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49732,
+   "qobjects": 750,
+   "server_rss_mb": 1883.6,
+   "vram_mb": 7053,
+   "max_lag_ms": 25.1,
+   "threads": 3
+  },
+  {
+   "t": 1260.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49736,
+   "qobjects": 750,
+   "server_rss_mb": 1849.6,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.4,
+   "threads": 3
+  },
+  {
+   "t": 1275.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49741,
+   "qobjects": 750,
+   "server_rss_mb": 1849.6,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.1,
+   "threads": 3
+  },
+  {
+   "t": 1290.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49742,
+   "qobjects": 750,
+   "server_rss_mb": 1849.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.1,
+   "threads": 3
+  },
+  {
+   "t": 1305.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49730,
+   "qobjects": 750,
+   "server_rss_mb": 1849.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.6,
+   "threads": 2
+  },
+  {
+   "t": 1320.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49753,
+   "qobjects": 750,
+   "server_rss_mb": 1822.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 24.4,
+   "threads": 3
+  },
+  {
+   "t": 1335.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49758,
+   "qobjects": 750,
+   "server_rss_mb": 1822.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.5,
+   "threads": 3
+  },
+  {
+   "t": 1350.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49759,
+   "qobjects": 750,
+   "server_rss_mb": 1822.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.7,
+   "threads": 3
+  },
+  {
+   "t": 1365.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49760,
+   "qobjects": 750,
+   "server_rss_mb": 1822.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.4,
+   "threads": 3
+  },
+  {
+   "t": 1380.6,
+   "gui_rss_mb": 113.9,
+   "gui_rss_untrimmed_mb": 113.9,
+   "py_objects": 49748,
+   "qobjects": 750,
+   "server_rss_mb": 1823.0,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.3,
+   "threads": 2
+  },
+  {
+   "t": 1395.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49771,
+   "qobjects": 750,
+   "server_rss_mb": 1904.4,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.9,
+   "threads": 3
+  },
+  {
+   "t": 1410.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49779,
+   "qobjects": 750,
+   "server_rss_mb": 1883.9,
+   "vram_mb": 7053,
+   "max_lag_ms": 27.9,
+   "threads": 3
+  },
+  {
+   "t": 1425.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49787,
+   "qobjects": 750,
+   "server_rss_mb": 1897.1,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.2,
+   "threads": 3
+  },
+  {
+   "t": 1440.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49792,
+   "qobjects": 750,
+   "server_rss_mb": 1897.1,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.2,
+   "threads": 3
+  },
+  {
+   "t": 1455.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49796,
+   "qobjects": 750,
+   "server_rss_mb": 1833.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.6,
+   "threads": 3
+  },
+  {
+   "t": 1470.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49801,
+   "qobjects": 750,
+   "server_rss_mb": 1833.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.9,
+   "threads": 3
+  },
+  {
+   "t": 1485.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49805,
+   "qobjects": 750,
+   "server_rss_mb": 1909.6,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.4,
+   "threads": 3
+  },
+  {
+   "t": 1500.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49810,
+   "qobjects": 750,
+   "server_rss_mb": 1909.6,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.3,
+   "threads": 3
+  },
+  {
+   "t": 1515.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49811,
+   "qobjects": 750,
+   "server_rss_mb": 1909.6,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.3,
+   "threads": 3
+  },
+  {
+   "t": 1530.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49815,
+   "qobjects": 750,
+   "server_rss_mb": 1884.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 19.6,
+   "threads": 3
+  },
+  {
+   "t": 1545.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49820,
+   "qobjects": 750,
+   "server_rss_mb": 1884.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.7,
+   "threads": 3
+  },
+  {
+   "t": 1560.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49821,
+   "qobjects": 750,
+   "server_rss_mb": 1884.7,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.4,
+   "threads": 3
+  },
+  {
+   "t": 1575.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49822,
+   "qobjects": 750,
+   "server_rss_mb": 1884.8,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.1,
+   "threads": 3
+  },
+  {
+   "t": 1590.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49810,
+   "qobjects": 750,
+   "server_rss_mb": 1884.8,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.5,
+   "threads": 2
+  },
+  {
+   "t": 1605.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49819,
+   "qobjects": 746,
+   "server_rss_mb": 1854.8,
+   "vram_mb": 7053,
+   "max_lag_ms": 19.9,
+   "threads": 2
+  },
+  {
+   "t": 1620.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49839,
+   "qobjects": 750,
+   "server_rss_mb": 1898.5,
+   "vram_mb": 7053,
+   "max_lag_ms": 18.8,
+   "threads": 3
+  },
+  {
+   "t": 1635.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49846,
+   "qobjects": 750,
+   "server_rss_mb": 1816.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.7,
+   "threads": 3
+  },
+  {
+   "t": 1650.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49851,
+   "qobjects": 750,
+   "server_rss_mb": 1816.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.3,
+   "threads": 3
+  },
+  {
+   "t": 1665.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49855,
+   "qobjects": 750,
+   "server_rss_mb": 1902.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 22.7,
+   "threads": 3
+  },
+  {
+   "t": 1680.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49860,
+   "qobjects": 750,
+   "server_rss_mb": 1902.3,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.2,
+   "threads": 3
+  },
+  {
+   "t": 1695.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49864,
+   "qobjects": 750,
+   "server_rss_mb": 1788.4,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.5,
+   "threads": 3
+  },
+  {
+   "t": 1710.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49869,
+   "qobjects": 750,
+   "server_rss_mb": 1788.4,
+   "vram_mb": 7053,
+   "max_lag_ms": 24.6,
+   "threads": 3
+  },
+  {
+   "t": 1725.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49870,
+   "qobjects": 750,
+   "server_rss_mb": 1788.4,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.4,
+   "threads": 3
+  },
+  {
+   "t": 1740.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49874,
+   "qobjects": 750,
+   "server_rss_mb": 1920.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.4,
+   "threads": 3
+  },
+  {
+   "t": 1755.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49879,
+   "qobjects": 750,
+   "server_rss_mb": 1920.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.8,
+   "threads": 3
+  },
+  {
+   "t": 1770.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49880,
+   "qobjects": 750,
+   "server_rss_mb": 1920.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 23.1,
+   "threads": 3
+  },
+  {
+   "t": 1785.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49881,
+   "qobjects": 750,
+   "server_rss_mb": 1920.2,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.7,
+   "threads": 3
+  },
+  {
+   "t": 1800.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49885,
+   "qobjects": 750,
+   "server_rss_mb": 1887.5,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.8,
+   "threads": 3
+  },
+  {
+   "t": 1815.6,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49877,
+   "qobjects": 750,
+   "server_rss_mb": 1887.5,
+   "vram_mb": 7053,
+   "max_lag_ms": 21.6,
+   "threads": 2
+  },
+  {
+   "t": 1816.2,
+   "gui_rss_mb": 114.0,
+   "gui_rss_untrimmed_mb": 114.0,
+   "py_objects": 49885,
+   "qobjects": 746,
+   "server_rss_mb": 1887.5,
+   "vram_mb": 7053,
+   "max_lag_ms": 20.8,
    "threads": 2
   }
  ],
@@ -990,127 +1367,127 @@
   {
    "name": "logique",
    "ok": true,
-   "seconds": 21.9,
+   "seconds": 21.8,
    "attempts": 1
   },
   {
    "name": "pairs",
    "ok": true,
-   "seconds": 26.2,
+   "seconds": 20.9,
    "attempts": 1
   },
   {
    "name": "identite",
    "ok": true,
-   "seconds": 20.3,
+   "seconds": 29.7,
    "attempts": 1
   },
   {
    "name": "amgm",
    "ok": true,
-   "seconds": 23.7,
+   "seconds": 29.9,
    "attempts": 1
   },
   {
    "name": "cercle",
    "ok": true,
-   "seconds": 74.2,
+   "seconds": 44.9,
    "attempts": 1
   },
   {
    "name": "triangulaire",
    "ok": true,
-   "seconds": 71.8,
+   "seconds": 32.7,
    "attempts": 1
   },
   {
    "name": "logique",
    "ok": true,
-   "seconds": 18.3,
+   "seconds": 12.1,
    "attempts": 1
   },
   {
    "name": "pairs",
    "ok": true,
-   "seconds": 23.9,
-   "attempts": 1
+   "seconds": 57.3,
+   "attempts": 2
   },
   {
    "name": "identite",
    "ok": true,
-   "seconds": 24.7,
+   "seconds": 19.1,
    "attempts": 1
   },
   {
    "name": "amgm",
    "ok": true,
-   "seconds": 26.6,
+   "seconds": 22.9,
    "attempts": 1
   },
   {
    "name": "cercle",
    "ok": true,
-   "seconds": 53.7,
+   "seconds": 50.3,
    "attempts": 1
   },
   {
    "name": "triangulaire",
    "ok": true,
-   "seconds": 48.3,
+   "seconds": 51.7,
    "attempts": 1
   },
   {
    "name": "logique",
    "ok": true,
-   "seconds": 11.6,
+   "seconds": 14.8,
    "attempts": 1
   },
   {
    "name": "pairs",
    "ok": true,
-   "seconds": 32.0,
+   "seconds": 23.5,
    "attempts": 1
   },
   {
    "name": "identite",
    "ok": true,
-   "seconds": 25.6,
+   "seconds": 18.9,
    "attempts": 1
   },
   {
    "name": "amgm",
    "ok": true,
-   "seconds": 26.7,
+   "seconds": 26.0,
    "attempts": 1
   },
   {
    "name": "cercle",
    "ok": true,
-   "seconds": 64.3,
+   "seconds": 60.0,
    "attempts": 1
   },
   {
    "name": "triangulaire",
    "ok": true,
-   "seconds": 56.1,
+   "seconds": 57.0,
    "attempts": 1
   },
   {
    "name": "logique",
    "ok": true,
-   "seconds": 16.8,
+   "seconds": 15.9,
    "attempts": 1
   },
   {
    "name": "pairs",
    "ok": true,
-   "seconds": 25.5,
+   "seconds": 17.9,
    "attempts": 1
   },
   {
    "name": "identite",
    "ok": true,
-   "seconds": 20.7,
+   "seconds": 22.8,
    "attempts": 1
   },
   {
@@ -1122,19 +1499,19 @@
   {
    "name": "cercle",
    "ok": true,
-   "seconds": 54.2,
+   "seconds": 39.0,
    "attempts": 1
   },
   {
    "name": "triangulaire",
    "ok": true,
-   "seconds": 38.4,
+   "seconds": 41.2,
    "attempts": 1
   },
   {
    "name": "logique",
    "ok": true,
-   "seconds": 14.6,
+   "seconds": 18.4,
    "attempts": 1
   },
   {
@@ -1146,61 +1523,133 @@
   {
    "name": "identite",
    "ok": true,
-   "seconds": 31.5,
+   "seconds": 31.1,
    "attempts": 1
   },
   {
    "name": "amgm",
    "ok": true,
-   "seconds": 25.5,
+   "seconds": 20.0,
    "attempts": 1
   },
   {
    "name": "cercle",
    "ok": true,
-   "seconds": 58.4,
+   "seconds": 41.4,
    "attempts": 1
   },
   {
    "name": "triangulaire",
    "ok": true,
-   "seconds": 65.7,
+   "seconds": 85.6,
    "attempts": 1
   },
   {
    "name": "logique",
    "ok": true,
-   "seconds": 11.6,
+   "seconds": 13.6,
    "attempts": 1
   },
   {
    "name": "pairs",
    "ok": true,
-   "seconds": 25.2,
+   "seconds": 23.4,
    "attempts": 1
   },
   {
    "name": "identite",
    "ok": true,
-   "seconds": 22.2,
+   "seconds": 24.1,
    "attempts": 1
   },
   {
    "name": "amgm",
    "ok": true,
-   "seconds": 31.7,
+   "seconds": 20.5,
    "attempts": 1
   },
   {
    "name": "cercle",
    "ok": true,
-   "seconds": 79.7,
+   "seconds": 57.6,
    "attempts": 1
   },
   {
    "name": "triangulaire",
    "ok": true,
-   "seconds": 38.2,
+   "seconds": 27.4,
+   "attempts": 1
+  },
+  {
+   "name": "logique",
+   "ok": true,
+   "seconds": 21.8,
+   "attempts": 1
+  },
+  {
+   "name": "pairs",
+   "ok": true,
+   "seconds": 18.2,
+   "attempts": 1
+  },
+  {
+   "name": "identite",
+   "ok": true,
+   "seconds": 25.3,
+   "attempts": 1
+  },
+  {
+   "name": "amgm",
+   "ok": true,
+   "seconds": 25.9,
+   "attempts": 1
+  },
+  {
+   "name": "cercle",
+   "ok": true,
+   "seconds": 58.9,
+   "attempts": 1
+  },
+  {
+   "name": "triangulaire",
+   "ok": true,
+   "seconds": 69.2,
+   "attempts": 1
+  },
+  {
+   "name": "logique",
+   "ok": true,
+   "seconds": 17.3,
+   "attempts": 1
+  },
+  {
+   "name": "pairs",
+   "ok": true,
+   "seconds": 24.3,
+   "attempts": 1
+  },
+  {
+   "name": "identite",
+   "ok": true,
+   "seconds": 25.0,
+   "attempts": 1
+  },
+  {
+   "name": "amgm",
+   "ok": true,
+   "seconds": 25.3,
+   "attempts": 1
+  },
+  {
+   "name": "cercle",
+   "ok": true,
+   "seconds": 52.8,
+   "attempts": 1
+  },
+  {
+   "name": "triangulaire",
+   "ok": true,
+   "seconds": 62.1,
    "attempts": 1
   },
   {
@@ -1212,91 +1661,37 @@
   {
    "name": "pairs",
    "ok": true,
-   "seconds": 23.2,
+   "seconds": 24.4,
    "attempts": 1
   },
   {
    "name": "identite",
    "ok": true,
-   "seconds": 23.6,
+   "seconds": 28.0,
    "attempts": 1
   },
   {
    "name": "amgm",
    "ok": true,
-   "seconds": 26.6,
+   "seconds": 29.6,
    "attempts": 1
   },
   {
    "name": "cercle",
    "ok": true,
-   "seconds": 51.4,
+   "seconds": 47.7,
    "attempts": 1
   },
   {
    "name": "triangulaire",
    "ok": true,
-   "seconds": 77.8,
+   "seconds": 61.3,
    "attempts": 1
   },
   {
    "name": "logique",
    "ok": true,
-   "seconds": 15.6,
-   "attempts": 1
-  },
-  {
-   "name": "pairs",
-   "ok": true,
-   "seconds": 24.5,
-   "attempts": 1
-  },
-  {
-   "name": "identite",
-   "ok": true,
-   "seconds": 29.0,
-   "attempts": 1
-  },
-  {
-   "name": "amgm",
-   "ok": true,
-   "seconds": 18.6,
-   "attempts": 1
-  },
-  {
-   "name": "cercle",
-   "ok": true,
-   "seconds": 42.8,
-   "attempts": 1
-  },
-  {
-   "name": "triangulaire",
-   "ok": true,
-   "seconds": 98.6,
-   "attempts": 1
-  },
-  {
-   "name": "logique",
-   "ok": true,
-   "seconds": 14.4,
-   "attempts": 1
-  },
-  {
-   "name": "pairs",
-   "ok": true,
-   "seconds": 19.6,
-   "attempts": 1
-  },
-  {
-   "name": "identite",
-   "ok": true,
-   "seconds": 21.4,
-   "attempts": 1
-  },
-  {
-   "name": "amgm",
-   "ok": true,
-   "seconds": 27.2,
+   "seconds": 16.1,
    "attempts": 1
   }
  ]
