@@ -130,3 +130,48 @@
   `-allow-unsupported-compiler` when CUDA rejects a newer GCC (known Fedora/Arch issue), PySide6 from the distribution if
   importable else `PySide6-Essentials` in the venv, final start-up probe. Drivers and CUDA are never installed for the user.
 - Not covered: AMD/Intel GPUs (Vulkan/ROCm builds) — the app then runs on the CPU.
+
+
+## D18 — v1.1 design choices (asked to the user first, 2026-10-04)
+- Memory = profile + dossier history + library (user selected all three). Chaining = fully automatic (user choice; the
+  statement stays visible in the thread, a « Pause pour relire l'énoncé » option exists, off by default).
+  Refinement = discussion thread per dossier. Language switch = interface + model answers.
+- The profile is given to the formalizer (as « conventions » appended to the natural-language text; the model-card
+  template itself is untouched) and to the explainer. **Not** to the prover: its prompt must stay Goedel's (D4).
+- Follow-up routing: keyword router FR/EN (`dossiers.route`) with a visible override combo, instead of an extra LLM call
+  that would cost a model switch (≈ 5 s) for every message.
+- Proof refinement: prover conversation = [Goedel initial prompt, previous verified proof, « The proof above is correct
+  … The user now asks: … »]; then the usual Lean-error correction rounds. Statement refinement: formalizer input =
+  problem + previous statement + requested change. Explanation refinement: explainer conversation continued.
+- Library: every accepted proof is stored (header stripped, dependencies recorded, same-workspace only); for a new
+  statement, up to 3 entries with Jaccard vocabulary similarity ≥ 0.25 are pasted above the target theorem (with their
+  proofs, so Lean checks everything). The target theorem is therefore always the LAST declaration of a file (D19).
+
+## D19 — Target = last theorem; per-dossier theorem names
+- `prepare_statement`, `theorem_name`, `initial_prompt` (rsplit, identical output for a single theorem — tested) and
+  `assemble_proof` now target the last declaration; helper lemmas the model copies back are de-duplicated by name.
+- Each dossier gets a unique Lean name (`slug(title)_xxxx`) so library entries never clash.
+
+## D20 — i18n
+- French is the source language; `_()` + `i18n_en.EN` (629 entries). An AST-based key extractor
+  (`scripts/dev/i18n_keys.py`) feeds `tests/test_i18n.py` (no missing key, same placeholders, no French in English).
+- Changing language rebuilds the main window in-process (model and dossiers untouched; refused while a task runs).
+- Pitfall found: parameters/locals named `_` (`*_`, `lambda _=False`, `path, _ = …`, `for _ in`) shadow the function;
+  all renamed, and a check confirmed none remain.
+
+## D21 — Updates of Lean/Mathlib and of the Goedel models (asked to the user first, 2026-10-04)
+- User choices: weekly check at start-up (on by default, can be turned off), one-click install, obsolete versions
+  deleted automatically, shipped in 1.1.0. The check is a deliberate, visible exception to offline mode: only
+  `git ls-remote` on mathlib4 (GitHub) and the Hugging Face model API are contacted; no identifier is sent.
+- What is followed: the stable Mathlib tags (`v4.N.M`, no release candidates) for the `lean-current` workspace; new
+  `Goedel-LM/Goedel-{Prover,Formalizer}-V*-8B` models (8B only: 8 GB card) installable once a Q4_K_M GGUF exists at
+  mradermacher (same source as the installer), and re-published GGUF files (checksum changed).
+- Not followed: `lean-prover49` (Lean 4.9 + Goedel's Mathlib fork) is the model's training environment and stays fixed;
+  the Qwen3 explainer and llama.cpp stay pinned (reproducibility).
+- Install = build next to the old version → verify (Mathlib: a test theorem compiled with the new workspace; model:
+  SHA-256 + loaded by the bundled llama-server on the CPU and asked for a few tokens) → switch → delete the obsolete
+  version (old workspace; old Lean toolchain only if no `lean-toolchain` in the home folder still pins it and it is not
+  the elan default; older model files of the same role). Any failure before the switch leaves everything unchanged.
+- The shared Mathlib download cache (`~/.cache/mathlib`) is not pruned: other Lean projects of the user use it.
+- Limit: a future Goedel model could expect a different prompt format; the smoke test checks that it loads and
+  answers, not its proof quality.

@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.1.0 — 2026-10-04
+
+**Nouveautés**
+- **Dossiers et fil de discussion** : chaque preuve devient un dossier. Après le résultat, on écrit simplement une demande
+  (« ajoute l'hypothèse n > 0 », « preuve plus courte », « explique l'étape 2 ») ; l'outil devine l'étape à refaire
+  (énoncé, preuve ou explication), modifiable à la main, et garde toutes les versions (« Revenir à cette version »).
+  Les dossiers sont listés, renommables, supprimables (annulable) et rouverts plus tard.
+- **Enchaînement entièrement automatique** traduire → prouver → expliquer, avec changement automatique du modèle
+  (traducteur, prouveur, explicateur). Option « Pause pour relire l'énoncé ».
+- **Mémoire** : profil personnel lu par le traducteur et l'explicateur ; historique du dossier pour les corrections ;
+  **bibliothèque** des résultats prouvés, réutilisés comme lemmes quand un nouveau problème leur ressemble (onglet dédié).
+- **Interface en anglais** (bouton 🌐 ou Système) : interface, aide, exemples et langue des explications.
+- **Mises à jour de Lean/Mathlib et des modèles Goedel** : vérification chaque semaine au démarrage (GitHub et
+  Hugging Face uniquement, désactivable), notification (bandeau + notification du bureau), installation en un clic.
+  La nouvelle version est installée à côté de l'ancienne et vérifiée (théorème test pour Mathlib, chargement et réponse
+  pour un modèle), puis l'ancienne est **supprimée automatiquement** ; une version de Lean encore utilisée par un de vos
+  projets est conservée. En cas d'échec, rien n'est changé. Aussi en ligne de commande : `scripts/updater.py check`.
+- Onglet Chat retiré (le prouveur n'est pas un modèle de discussion).
+
+**Corrections**
+- Une vérification Lean relancée juste après « Arrêter » pouvait planter ou reprendre un résultat périmé (numéros de tâche).
+- Les signaux d'une génération annulée pouvaient perturber la suivante.
+
+
 ## 1.0.0 — 2026-10-04 (première version)
 
 **Fonctions**

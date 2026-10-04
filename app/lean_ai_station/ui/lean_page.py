@@ -1,25 +1,35 @@
-"""Lean tab: editor, « Vérifier » (compile) and « Prouver » (generate → compile → feedback loop)."""
+"""Lean tab (v1.1): one « dossier » per proof — a conversation thread (problem, follow-up requests, results) on the
+left, the current artefacts (Lean statement, proof, explanation, attempts, Lean messages) on the right.
+The pipeline (ui/pipeline.py) chains translate → prove → explain and switches models automatically."""
 from __future__ import annotations
 
+import datetime as _dt
+import html
+import re
 import socket
 import urllib.parse
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QDesktopServices, QGuiApplication, QTextCursor
-from PySide6.QtWidgets import (QComboBox, QFileDialog, QInputDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMenu,
-                               QPlainTextEdit, QSpinBox, QSplitter, QStackedWidget, QTabWidget, QTextBrowser, QVBoxLayout,
-                               QWidget)
+from PySide6.QtGui import QDesktopServices, QGuiApplication, QTextCursor, QTextDocument
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QInputDialog, QListWidget,
+                               QListWidgetItem, QMenu, QPlainTextEdit, QSpinBox, QSplitter, QTabWidget, QTextBrowser,
+                               QVBoxLayout, QWidget)
 
 from .. import leancheck, texio
 from ..errors import Friendly, friendly
-from ..examples import EXAMPLES, VERIFY_SAMPLE
+from ..examples import EXAMPLES, VERIFY_SAMPLE, example_text
+from ..i18n import _
 from ..services import CompileResult
 from . import theme
-from .widgets import BusyBar, Card, LeanEditor, button, label, shortcut
+from .widgets import BusyBar, LeanEditor, button, label, shortcut
 
 STATUS_ICON = {"génération": "✍️", "compilation": "⚙️", "accepté": "✅", "refusé": "❌", "erreur": "⚠️", "annulé": "⏹"}
-DEFAULT_TEXT = EXAMPLES[1].statement + "\n"
+STAGE_KEYS = ["auto", "statement", "proof", "explanation"]
+
+
+def stage_labels() -> list[str]:
+    return [_("Auto"), _("Énoncé"), _("Preuve"), _("Explication")]
 
 
 def lean4web_url() -> str | None:
@@ -28,6 +38,14 @@ def lean4web_url() -> str | None:
             return "http://127.0.0.1:8890"
     except OSError:
         return None
+
+
+def _md_to_html(md: str) -> str:
+    doc = QTextDocument()
+    doc.setMarkdown(texio.display_markdown(md))
+    body = doc.toHtml()
+    i, j = body.find("<body"), body.rfind("</body>")
+    return body[body.find(">", i) + 1: j] if i >= 0 and j > i else html.escape(md)
 
 
 class _NoAttempts:
@@ -39,308 +57,306 @@ class LeanPage(QWidget):
     def __init__(self, ctx):
         super().__init__()
         self.ctx = ctx
-        self.file_path: str = ctx.session.get("lean_file", "")
-        self._pending_prove = False
-        self._pending_translate = False
-        self._pending_explain = False
-        self._explanation = ""             # Markdown + $math$ written by the explanation model
-        self._active = ctx.prover          # whose attempts the list shows: ctx.prover or ctx.formalizer
+        self.pipe = ctx.pipeline
+        self.file_path = ""
+        self._active = _NoAttempts()          # service whose attempts are shown in « Essais »
+        self._live_index = -1
+        self._buf: list[str] = []
+        self._expl_live = ""
+        self._editor_from_dossier = ""        # last statement text written by the dossier (detects manual edits)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(20, 16, 20, 12)
+        lay.setContentsMargins(20, 14, 20, 10)
         lay.setSpacing(8)
+
+        # ---------------- top bar: dossiers
+        top = QHBoxLayout()
+        top.addWidget(label(_("Dossier :"), "H2"))
+        self.dossier_combo = QComboBox()
+        self.dossier_combo.setMinimumWidth(320)
+        self.dossier_combo.setToolTip(_("Chaque preuve est un dossier : son fil de discussion et toutes ses versions "
+                                        "sont conservés. Choisissez-en un pour le rouvrir."))
+        self.dossier_combo.activated.connect(self._combo_open)
+        top.addWidget(self.dossier_combo, 1)
+        self.new_btn = button(_("＋ Nouveau"), "Primary", _("Commencer un nouveau problème (Ctrl+N)"), self.new_dossier)
+        self.rename_btn = button("✎", tip=_("Renommer ce dossier"), slot=self.rename_dossier)
+        self.delete_btn = button("🗑", "Danger", _("Supprimer ce dossier (annulable)"), self.delete_dossier)
+        for b in (self.new_btn, self.rename_btn, self.delete_btn):
+            top.addWidget(b)
+        top.addSpacing(12)
+        self.options_btn = button(_("⚙ Options"), tip=_("Version de Lean, nombre d'essais, pause après la traduction"))
+        self.options_btn.setCheckable(True)
+        self.options_btn.toggled.connect(lambda on: self.options_box.setVisible(on))
+        self.stop_btn = button(_("⏹ Arrêter"), "Danger", _("Arrêter l'opération en cours (Échap)"), self.stop)
+        self.stop_btn.setEnabled(False)
+        top.addWidget(self.options_btn)
+        top.addWidget(self.stop_btn)
+        lay.addLayout(top)
+
+        self.options_box = QWidget()
+        ob = QHBoxLayout(self.options_box)
+        ob.setContentsMargins(0, 0, 0, 0)
+        ob.addWidget(label(_("Espace Lean :")))
+        self.ws_combo = QComboBox()
+        self.ws_combo.setMinimumWidth(280)
+        self.ws_combo.setToolTip(_("Version de Lean et de Mathlib utilisée pour vérifier.\n"
+                                   "« Prouveur (Lean 4.9) » donne les meilleurs résultats avec Goedel-Prover."))
+        self.ws_combo.currentIndexChanged.connect(self._ws_changed)
+        ob.addWidget(self.ws_combo, 1)
+        ob.addWidget(label(_("Essais :")))
+        self.tries = QSpinBox()
+        self.tries.setRange(1, 32)
+        self.tries.setValue(ctx.settings.prove_attempts)
+        self.tries.setToolTip(_("Nombre maximal d'essais : après chaque échec, les erreurs de Lean sont renvoyées à "
+                                "l'IA pour qu'elle corrige sa preuve."))
+        self.tries.valueChanged.connect(self._tries_changed)
+        ob.addWidget(self.tries)
+        self.pause_box = QCheckBox(_("Pause pour relire l'énoncé"))
+        self.pause_box.setChecked(ctx.settings.pause_after_translation)
+        self.pause_box.setToolTip(_("Désactivé : traduction, preuve et explication s'enchaînent sans arrêt.\n"
+                                    "Activé : l'outil s'arrête après la traduction pour que vous relisiez l'énoncé."))
+        self.pause_box.toggled.connect(self._pause_changed)
+        ob.addWidget(self.pause_box)
+        self.options_box.hide()
+        lay.addWidget(self.options_box)
 
         self.busy = BusyBar()
         self.busy.cancelled.connect(self.stop)
         lay.addWidget(self.busy)
 
-        # --- left column: ① problem → ② Lean statement → ③ actions
         split = QSplitter(Qt.Horizontal)
+        # ---------------- left: thread
         left = QWidget()
         ll = QVBoxLayout(left)
         ll.setContentsMargins(0, 0, 0, 0)
-        ll.setSpacing(6)
-
-        h1 = QHBoxLayout()
-        h1.addWidget(label("① Décrivez votre problème", "H2"))
-        h1.addStretch(1)
-        self.ex_btn = button("Exemples ▾", tip="Charger un exercice d'exemple (problème + énoncé Lean)")
-        self.menu = QMenu(self)
+        self.status_title = label("", "H2", wrap=True)
+        self.status_detail = label("", "Muted", wrap=True)
+        ll.addWidget(self.status_title)
+        ll.addWidget(self.status_detail)
+        self.thread = QTextBrowser()
+        self.thread.setOpenLinks(False)
+        self.thread.anchorClicked.connect(self._anchor)
+        ll.addWidget(self.thread, 1)
+        self.quick = QWidget()
+        qk = QHBoxLayout(self.quick)
+        qk.setContentsMargins(0, 0, 0, 0)
+        self.quick_btns = []
+        for text, stage, tip in [
+            (_("Corriger l'énoncé…"), "statement", _("Décrivez ce qui ne va pas dans l'énoncé : l'IA le retraduit puis refait la preuve")),
+            (_("Preuve plus simple"), "proof", _("Demander une preuve plus courte et plus lisible")),
+            (_("Autre méthode"), "proof", _("Demander une preuve par une autre méthode")),
+            (_("Expliquer plus en détail"), "explanation", _("Demander une explication plus détaillée")),
+        ]:
+            b = button(text, tip=tip, slot=lambda _c=False, t=text, s=stage: self._quick(t, s))
+            self.quick_btns.append(b)
+            qk.addWidget(b)
+        qk.addStretch(1)
+        ll.addWidget(self.quick)
+        self.input = QPlainTextEdit()
+        self.input.setMaximumHeight(92)
+        self.input.setMinimumHeight(60)
+        ll.addWidget(self.input)
+        row = QHBoxLayout()
+        self.ex_btn = button(_("Exemples ▾"), tip=_("Lancer un exercice d'exemple"))
+        menu = QMenu(self)
         for ex in EXAMPLES:
-            self.menu.addAction(f"{ex.title}  ({ex.level})", lambda e=ex: self.load_example(e))
-        self.menu.addSeparator()
-        self.menu.addAction("Fichier Lean à vérifier (exemple)", lambda: self.editor.set_text_undoable(VERIFY_SAMPLE))
-        self.ex_btn.setMenu(self.menu)
-        self.tex_btn = button("📄 Importer un .tex…", tip="Lire un fichier LaTeX et en extraire un théorème, un lemme "
-                              "ou un exercice (vous pouvez aussi glisser le .tex sur la fenêtre)", slot=self.import_tex)
-        h1.addWidget(self.ex_btn)
-        h1.addWidget(self.tex_btn)
-        ll.addLayout(h1)
-        self.nl_edit = QPlainTextEdit()
-        self.nl_edit.setMaximumHeight(120)
-        self.nl_edit.setMinimumHeight(70)
-        self.nl_edit.setPlaceholderText("Écrivez le problème avec vos mots, en français ou en anglais.\n"
-                                        "Exemple : « Montrer que la somme de deux entiers pairs est paire. »\n"
-                                        "Les formules LaTeX sont acceptées : $a^2 + b^2 \\ge 2ab$.")
-        self.nl_edit.setPlainText(ctx.session.get("lean_nl", ""))
-        self.nl_edit.textChanged.connect(self._nl_changed)
-        ll.addWidget(self.nl_edit)
-        h1b = QHBoxLayout()
-        self.translate_btn = button("✨ Traduire en Lean", "Primary",
-                                    "L'IA traduit votre texte en un énoncé Lean (Ctrl+T). Vous pourrez le relire et le corriger.",
-                                    self.translate)
-        h1b.addWidget(self.translate_btn)
-        h1b.addWidget(label("Lean est le langage dans lequel la preuve sera vérifiée.", "Muted"), 1)
-        ll.addLayout(h1b)
-
-        h2 = QHBoxLayout()
-        h2.addWidget(label("② Énoncé Lean (à relire)", "H2"))
-        self.file_label = label(obj="Muted")
-        self.file_label.setMaximumWidth(150)
-        h2.addWidget(self.file_label, 1)
-        self.open_btn = button("Ouvrir…", tip="Ouvrir un fichier .lean et le faire vérifier par Lean (Ctrl+O).\n"
-                               "Vous pouvez aussi glisser un fichier .lean sur la fenêtre.", slot=self.open_file)
-        self.save_btn = button("Enregistrer", tip="Enregistrer l'éditeur dans un fichier .lean (Ctrl+S)", slot=self.save_file)
-        h2.addWidget(self.open_btn)
-        h2.addWidget(self.save_btn)
-        ll.addLayout(h2)
-        self.editor = LeanEditor()
-        self.editor.setLineWrapMode(QPlainTextEdit.WidgetWidth)
-        self.editor.setPlaceholderText("L'énoncé Lean apparaîtra ici après la traduction. Vous pouvez aussi l'écrire vous-même :\n\n"
-                                       "theorem exemple (a b : ℝ) : a + b = b + a := by sorry"
-                                       "\n\nAstuce : tapez \\R puis espace pour obtenir ℝ, \\le pour ≤, \\to pour →.")
-        self.editor.setPlainText(ctx.session.get("lean_editor", DEFAULT_TEXT))
-        self.editor.textChanged.connect(self._editor_changed)
-        ll.addWidget(self.editor, 1)
-        self._review_text = ""
-        self.review_card = Card(margins=12)
-        self.review_card.lay.addWidget(label(
-            "<b>⚠ Relisez cet énoncé.</b> Lean vérifiera la preuve de <i>exactement</i> ce texte, mais il ne peut pas "
-            "savoir si c'est bien <i>votre</i> problème. Hypothèses oubliées ? Mauvais nombres ? Corrigez ici, "
-            "ou cliquez sur « Retraduire ».", wrap=True))
-        rr = QHBoxLayout()
-        self.ok_prove_btn = button("✅ C'est bon : prouver", "Primary", "L'IA cherche maintenant une preuve de cet énoncé",
-                                   self.prove)
-        self.retranslate_btn = button("↻ Retraduire", tip="Demander une nouvelle traduction", slot=self.translate)
-        rr.addWidget(self.ok_prove_btn)
-        rr.addWidget(self.retranslate_btn)
-        rr.addStretch(1)
-        self.review_card.lay.addLayout(rr)
-        self.review_card.hide()
-        ll.addWidget(self.review_card)
-
-        ll.addWidget(label("③ Faites prouver", "H2"))
-        h3 = QHBoxLayout()
-        h3.addStretch(1)
-        self.options_btn = button("⚙ Options", tip="Version de Lean utilisée, nombre d'essais")
-        self.options_btn.setCheckable(True)
-        self.options_btn.toggled.connect(lambda on: self.options_box.setVisible(on))
-        self.verify_btn = button("✔ Vérifier", tip="Faire vérifier l'énoncé ou le fichier par Lean (Ctrl+Entrée)", slot=self.verify)
-        self.prove_btn = button("✨ Prouver", "Primary",
-                                "L'IA cherche une preuve, Lean la vérifie (Ctrl+Maj+Entrée)", slot=self.prove)
-        self.explain_btn = button("💬 Expliquer", tip="Une IA explique en français la preuve écrite dans la zone ②",
-                                  slot=self.explain_editor)
-        self.stop_btn = button("⏹ Arrêter", "Danger", "Arrêter l'opération en cours (Échap)", slot=self.stop)
-        self.stop_btn.setEnabled(False)
-        for b in (self.options_btn, self.explain_btn, self.verify_btn, self.prove_btn, self.stop_btn):
-            h3.addWidget(b)
-        ll.addLayout(h3)
-        self.options_box = QWidget()
-        ob = QHBoxLayout(self.options_box)
-        ob.setContentsMargins(0, 0, 0, 0)
-        ob.addWidget(label("Espace Lean :"))
-        self.ws_combo = QComboBox()
-        self.ws_combo.setMinimumWidth(300)
-        self.ws_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        self.ws_combo.setToolTip("Version de Lean et de Mathlib utilisée pour vérifier.\n"
-                                 "« Prouveur (Lean 4.9) » donne les meilleurs résultats avec Goedel-Prover.")
-        self.ws_combo.currentIndexChanged.connect(self._ws_changed)
-        ob.addWidget(self.ws_combo, 1)
-        ob.addWidget(label("Essais :"))
-        self.tries = QSpinBox()
-        self.tries.setRange(1, 32)
-        self.tries.setValue(ctx.settings.prove_attempts)
-        self.tries.setToolTip("Nombre maximal d'essais : après chaque échec, les erreurs de Lean sont renvoyées à l'IA "
-                              "pour qu'elle corrige sa preuve.")
-        self.tries.valueChanged.connect(self._tries_changed)
-        ob.addWidget(self.tries)
-        self.options_box.hide()
-        ll.addWidget(self.options_box)
+            menu.addAction(f"{_(ex.title)}  ({_(ex.level)})", lambda e=ex: self.start_example(e))
+        menu.addSeparator()
+        menu.addAction(_("Fichier Lean à vérifier (exemple)"), lambda: self._load_text_for_check(VERIFY_SAMPLE, _("Exemple à vérifier")))
+        self.ex_btn.setMenu(menu)
+        self.tex_btn = button(_("📂 Importer ▾"), tip=_("Prendre un énoncé dans un fichier LaTeX, ou faire vérifier un "
+                              "fichier .lean (vous pouvez aussi glisser le fichier sur la fenêtre)"))
+        im = QMenu(self)
+        im.addAction(_("Un théorème d'un fichier .tex…"), self.import_tex)
+        im.addAction(_("Un fichier .lean à vérifier… (Ctrl+O)"), self.open_file)
+        self.tex_btn.setMenu(im)
+        self.open_btn = self.tex_btn
+        self.stage_combo = QComboBox()
+        self.stage_combo.addItems(stage_labels())
+        self.stage_combo.setToolTip(_("Que doit modifier votre demande ? « Auto » : l'outil devine (énoncé, preuve ou "
+                                      "explication) d'après vos mots."))
+        self.send_btn = button(_("Envoyer"), "Primary", _("Envoyer (Ctrl+Entrée)"), self.send)
+        for w in (self.ex_btn, self.tex_btn):
+            row.addWidget(w)
+        row.addStretch(1)
+        self.stage_label = label(_("Modifier :"), "Muted")
+        row.addWidget(self.stage_label)
+        row.addWidget(self.stage_combo)
+        row.addWidget(self.send_btn)
+        ll.addLayout(row)
         split.addWidget(left)
 
-        right = QWidget()
-        rl = QVBoxLayout(right)
-        rl.setContentsMargins(6, 0, 0, 0)
-        self.status_card = Card()
-        self.status_title = label("Prêt", "H2", wrap=True)
-        self.status_detail = label("Écrivez un énoncé (ou choisissez « Exemples »), puis cliquez sur « Prouver ».",
-                                   "Muted", wrap=True)
-        self.status_card.lay.addWidget(self.status_title)
-        self.status_card.lay.addWidget(self.status_detail)
-        self.status_card.setToolTip("Un « token » est un morceau de mot (environ ¾ de mot) : tokens/s mesure la vitesse "
-                                    "d'écriture de l'IA.")
-        rl.addWidget(self.status_card)
+        # ---------------- right: artefacts
+        self.tabs = QTabWidget()
+        st = QWidget()
+        sl = QVBoxLayout(st)
+        sl.setContentsMargins(6, 6, 6, 6)
+        self.stmt_info = label("", "Muted", wrap=True)
+        sl.addWidget(self.stmt_info)
+        self.editor = LeanEditor()
+        self.editor.setLineWrapMode(QPlainTextEdit.WidgetWidth)
+        self.editor.setPlaceholderText(_("L'énoncé Lean apparaîtra ici après la traduction. Vous pouvez aussi l'écrire "
+                                         "vous-même :\n\ntheorem exemple (a b : ℝ) : a + b = b + a := by sorry\n\n"
+                                         "Astuce : tapez \\R puis espace pour obtenir ℝ, \\le pour ≤, \\to pour →."))
+        sl.addWidget(self.editor, 1)
+        er = QHBoxLayout()
+        self.verify_btn = button(_("✔ Vérifier"), tip=_("Faire vérifier ce texte par Lean (F5)"), slot=self.verify)
+        self.prove_btn = button(_("✨ Prouver cet énoncé"), "Primary",
+                                _("L'IA cherche une preuve de cet énoncé, puis l'explique (Ctrl+Maj+Entrée)"), self.prove)
+        self.save_btn = button(_("Enregistrer…"), tip=_("Enregistrer ce texte dans un fichier .lean (Ctrl+S)"),
+                               slot=self.save_file)
+        er.addWidget(self.verify_btn)
+        er.addWidget(self.prove_btn)
+        er.addStretch(1)
+        er.addWidget(self.save_btn)
+        sl.addLayout(er)
+        hint = label(_("Astuce : \\R → ℝ, \\N → ℕ, \\le → ≤, \\to → →, \\forall → ∀ (tapez puis Espace)."), "Muted")
+        hint.setStyleSheet("font-size: 9pt;")
+        sl.addWidget(hint)
+        self.tabs.addTab(st, _("Énoncé Lean"))
 
-        self.stack = QStackedWidget()
-        rl.addWidget(self.stack, 1)
-        # empty state
-        empty = QLabel("Comment ça marche\n\n"
-                       "①  Écrivez votre problème en français (ou importez un fichier .tex)\n"
-                       "②  L'IA le traduit en Lean : relisez l'énoncé\n"
-                       "③  L'IA cherche la preuve, Lean la vérifie ligne par ligne\n\n"
-                       "Une preuve n'est jamais acceptée sans le feu vert de Lean.\n"
-                       "Nouveau avec Lean ? Cliquez sur « ❓ Aide » dans la barre de gauche.")
-        empty.setObjectName("Muted")
-        empty.setAlignment(Qt.AlignCenter)
-        self.stack.addWidget(empty)
-        # results
-        res = QWidget()
-        rs = QVBoxLayout(res)
-        rs.setContentsMargins(0, 0, 0, 0)
+        pr = QWidget()
+        pl = QVBoxLayout(pr)
+        pl.setContentsMargins(6, 6, 6, 6)
+        self.proof_info = label("", "Muted", wrap=True)
+        pl.addWidget(self.proof_info)
+        self.proof_view = LeanEditor(read_only=True)
+        self.proof_view.setLineWrapMode(QPlainTextEdit.WidgetWidth)
+        self.proof_view.setPlaceholderText(_("Aucune preuve pour l'instant."))
+        pl.addWidget(self.proof_view, 1)
+        prr = QHBoxLayout()
+        self.copy_btn = button(_("📋 Copier"), "Primary", _("Copier la preuve dans le presse-papiers"), self.copy_final)
+        self.save_proof_btn = button(_("💾 Enregistrer…"), tip=_("Enregistrer la preuve dans un fichier .lean"),
+                                     slot=self.save_final)
+        self.tex_out_btn = button(_("📄 LaTeX ▾"), tip=_("Exporter énoncé, preuve et explication en LaTeX (compatible Overleaf)"))
+        tm = QMenu(self)
+        tm.addAction(_("Enregistrer un fichier .tex…"), self.export_tex)
+        tm.addAction(_("Copier le code LaTeX"), self.copy_tex)
+        tm.addAction(_("Ouvrir Overleaf (navigateur)"), self.open_overleaf)
+        self.tex_out_btn.setMenu(tm)
+        self.l4w_btn = button("Lean4Web ↗", tip=_("Ouvrir la preuve dans votre Lean4Web local (navigateur).\n"
+                              "Attention : Lean4Web utilise une autre version de Lean."), slot=self.open_lean4web)
+        for b in (self.copy_btn, self.save_proof_btn, self.tex_out_btn, self.l4w_btn):
+            prr.addWidget(b)
+        prr.addStretch(1)
+        pl.addLayout(prr)
+        self.tabs.addTab(pr, _("Preuve"))
+
+        ex = QWidget()
+        xl = QVBoxLayout(ex)
+        xl.setContentsMargins(6, 6, 6, 6)
+        self.explain_view = QTextBrowser()
+        self.explain_view.setPlaceholderText(_("L'explication en langage courant apparaîtra ici après la preuve."))
+        xl.addWidget(self.explain_view, 1)
+        xr = QHBoxLayout()
+        self.explain_btn = button(_("💬 Expliquer"), tip=_("Une IA explique la preuve en langage courant (≈ 20 s)"),
+                                  slot=self.explain)
+        xr.addWidget(self.explain_btn)
+        xr.addWidget(button(_("Copier l'explication"), tip=_("Copier le texte de l'explication"), slot=self.copy_explanation))
+        xr.addStretch(1)
+        xl.addLayout(xr)
+        self.tabs.addTab(ex, _("Explication"))
+
+        at = QWidget()
+        al = QVBoxLayout(at)
+        al.setContentsMargins(6, 6, 6, 6)
         self.attempts = QListWidget()
-        self.attempts.setMaximumHeight(84)
+        self.attempts.setMaximumHeight(120)
         self.attempts.setWordWrap(True)
         self.attempts.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.attempts.setToolTip("Chaque essai de l'IA. Cliquez pour voir son raisonnement, son code et les erreurs.")
+        self.attempts.setToolTip(_("Chaque essai de l'IA. Cliquez pour voir sa réflexion et le code testé."))
         self.attempts.currentRowChanged.connect(self._show_attempt)
-        self.attempts.itemActivated.connect(lambda it: self._goto_line(it))
-        rs.addWidget(self.attempts)
-        self.tabs = QTabWidget()
+        self.attempts.itemActivated.connect(self._goto_line)
+        al.addWidget(self.attempts)
         self.reasoning = QPlainTextEdit()
         self.reasoning.setReadOnly(True)
         self.reasoning.setFont(theme.mono_font(10))
         self.reasoning.setMaximumBlockCount(20000)
-        self.code_view = LeanEditor(read_only=True)
-        self.code_view.setLineWrapMode(QPlainTextEdit.WidgetWidth)
+        self.reasoning.setLineWrapMode(QPlainTextEdit.WidgetWidth)
+        self.reasoning.setPlaceholderText(_("La réflexion de l'IA (souvent en anglais) s'affiche ici en direct."))
+        al.addWidget(self.reasoning, 1)
+        self.tabs.addTab(at, _("Essais"))
+
         self.errors_view = QPlainTextEdit()
         self.errors_view.setReadOnly(True)
         self.errors_view.setFont(theme.mono_font(10))
-        self.reasoning.setLineWrapMode(QPlainTextEdit.WidgetWidth)
-        self.tabs.addTab(self.reasoning, "Réflexion IA")
-        self.tabs.addTab(self.code_view, "Code testé")
-        self.tabs.addTab(self.errors_view, "Messages Lean")
-        self.explain_view = QTextBrowser()
-        self.explain_view.setOpenExternalLinks(False)
-        self.explain_view.setPlaceholderText("Cliquez sur « 💬 Expliquer » pour qu'une IA explique la preuve en français.")
-        self.tabs.addTab(self.explain_view, "Explication")
-        rs.addWidget(self.tabs, 3)
-        # final proof
-        self.final_card = Card()
-        self.final_card.lay.addWidget(label("Preuve vérifiée", "H2"))
-        self.final_view = LeanEditor(read_only=True)
-        self.final_view.setLineWrapMode(QPlainTextEdit.WidgetWidth)
-        self.final_view.setMinimumHeight(90)
-        self.final_view.setMaximumHeight(130)
-        self.final_card.lay.addWidget(self.final_view)
-        fr = QHBoxLayout()
-        fr2 = QHBoxLayout()
-        fr.addWidget(button("📋 Copier", "Primary", "Copier la preuve dans le presse-papiers", self.copy_final))
-        fr.addWidget(button("💾 Enregistrer…", tip="Enregistrer la preuve dans un fichier .lean", slot=self.save_final))
-        self.explain_final_btn = button("💬 Expliquer en français", "Primary",
-                                        "Une IA explique cette preuve en langage courant (≈ 20 s)", self.explain_final)
-        fr.addWidget(self.explain_final_btn)
-        fr2.addWidget(button("↩ Vers l'éditeur", tip="Remplacer le contenu de l'éditeur par la preuve (annulable avec Ctrl+Z)",
-                             slot=lambda: self.editor.set_text_undoable(self.final_view.toPlainText())))
-        self.l4w_btn = button("Lean4Web ↗", tip="Ouvrir la preuve dans votre Lean4Web local (navigateur).\n"
-                              "Attention : Lean4Web utilise une autre version de Lean.", slot=self.open_lean4web)
-        fr2.addWidget(self.l4w_btn)
-        self.tex_out_btn = button("📄 LaTeX ▾", tip="Exporter l'énoncé et la preuve en LaTeX (compatible Overleaf)")
-        tm = QMenu(self)
-        tm.addAction("Enregistrer un fichier .tex…", self.export_tex)
-        tm.addAction("Copier le code LaTeX", self.copy_tex)
-        tm.addAction("Copier l'explication (texte)", self.copy_explanation)
-        tm.addAction("Ouvrir Overleaf (navigateur)", self.open_overleaf)
-        self.tex_out_btn.setMenu(tm)
-        fr.addWidget(self.tex_out_btn)
-        fr.addStretch(1)
-        fr2.addStretch(1)
-        self.final_card.lay.addLayout(fr)
-        self.final_card.lay.addLayout(fr2)
-        self.final_card.hide()
-        rs.addWidget(self.final_card)
-        self.stack.addWidget(res)
-        split.addWidget(right)
+        self.errors_view.setPlaceholderText(_("Les messages de Lean (erreurs, avertissements) apparaîtront ici."))
+        self.tabs.addTab(self.errors_view, _("Messages Lean"))
+        split.addWidget(self.tabs)
         split.setStretchFactor(0, 5)
         split.setStretchFactor(1, 6)
         lay.addWidget(split, 1)
 
-        # shortcuts
-        shortcut(self, "Ctrl+T", self.translate)
-        shortcut(self, "Ctrl+Return", self.verify)
+        # ---------------- shortcuts, timers, signals
+        shortcut(self, "Ctrl+Return", self.send)
         shortcut(self, "Ctrl+Shift+Return", self.prove)
+        shortcut(self, "F5", self.verify)
         shortcut(self, "Escape", self.stop)
         shortcut(self, "Ctrl+S", self.save_file)
         shortcut(self, "Ctrl+O", self.open_file)
-
-        # streaming buffer (flushed every 60 ms to keep the UI smooth)
-        self._buf: list[str] = []
+        shortcut(self, "Ctrl+N", self.new_dossier)
         self._flush = QTimer(self)
-        self._flush.setInterval(60)
+        self._flush.setInterval(80)
         self._flush.timeout.connect(self._flush_tokens)
-        self._live_index = -1
-
-        p = ctx.prover
-        p.attemptStarted.connect(self._attempt_started)
-        p.token.connect(self._token)
-        p.attemptUpdated.connect(self._attempt_updated)
-        p.finished.connect(self._prove_finished)
-        p.infraError.connect(self._infra_error)
-        f = ctx.formalizer
-        f.attemptStarted.connect(self._attempt_started)
-        f.token.connect(self._token)
-        f.attemptUpdated.connect(self._attempt_updated)
-        f.finished.connect(self._translate_finished)
-        f.infraError.connect(self._infra_error)
-        ex = ctx.explainer
-        ex.token.connect(self._explain_token)
-        ex.finished.connect(self._explain_finished)
-        ex.infraError.connect(self._infra_error)
-        self._expl_buf: list[str] = []
-        self._expl_text = ""
-        ctx.translateRequest.connect(self.translate_text)
-        ctx.texRequest.connect(self.load_tex)
+        for svc in (ctx.prover, ctx.formalizer):
+            svc.attemptStarted.connect(self._attempt_started)
+            svc.token.connect(self._token)
+            svc.attemptUpdated.connect(self._attempt_updated)
+        ctx.explainer.token.connect(self._explain_token)
         ctx.verifier.finished.connect(self._verified)
         ctx.workspacesChanged.connect(self._fill_ws)
-        ctx.server.stateChanged.connect(self._server_state)
-        ctx.server.failed.connect(self._loading_failed)
-        ctx.proveRequest.connect(self.prove_statement)
+        ctx.translateRequest.connect(self.start_problem)
+        ctx.proveRequest.connect(self.start_statement)
+        ctx.texRequest.connect(self.load_tex)
+        self.pipe.changed.connect(self.refresh)
+        self.pipe.listChanged.connect(self.refresh_list)
+        self.pipe.stageChanged.connect(self._stage)
+        self.pipe.loading.connect(self._loading)
+        self.editor.textChanged.connect(self._editor_changed)
         self._fill_ws()
-        self._update_file_label()
+        did = ctx.session.get("dossier")
+        if did:
+            self.pipe.open(did)
+        self.refresh_list()
+        self.refresh()
 
-    # ------------------------------------------------------------ state helpers
+    # ================================================================ state helpers
     def _running(self) -> bool:
-        return (self.ctx.prover.running or self.ctx.formalizer.running or self.ctx.verifier.busy
-                or self._pending_prove or self._pending_translate or self._pending_explain
-                or self.ctx.explainer.running)
+        return self.pipe.busy or self.ctx.verifier.busy
 
     def _set_running(self, on: bool):
-        self.prove_btn.setEnabled(not on)
-        self.verify_btn.setEnabled(not on)
-        self.translate_btn.setEnabled(not on)
-        self.explain_btn.setEnabled(not on)
-        self.explain_final_btn.setEnabled(not on)
-        self.tex_btn.setEnabled(not on)
-        self.ok_prove_btn.setEnabled(not on)
-        self.retranslate_btn.setEnabled(not on)
-        self.ws_combo.setEnabled(not on)
+        for w in (self.send_btn, self.prove_btn, self.verify_btn, self.explain_btn, self.ws_combo, self.new_btn,
+                  self.delete_btn, self.dossier_combo, self.tex_btn, self.open_btn, self.ex_btn, *self.quick_btns):
+            w.setEnabled(not on)
         self.stop_btn.setEnabled(on)
         if not on:
             self.busy.stop()
+            self._flush.stop()
+            self._flush_tokens()
+
+    def _status(self, title: str, detail: str = "", color: str | None = None):
+        self.status_title.setText(title)
+        self.status_title.setStyleSheet(f"color: {color};" if color else "")
+        self.status_detail.setText(detail)
+
+    def _need_ws(self):
+        ws = self.ctx.workspace()
+        if ws is None or ws.check():
+            self.ctx.banner.emit(friendly("workspace"), "\n".join(ws.problems) if ws else _("Aucun espace sélectionné."))
+            return None
+        return ws
 
     def _fill_ws(self):
         self.ws_combo.blockSignals(True)
         self.ws_combo.clear()
         for w in self.ctx.workspaces:
-            text = w.label + ("" if not w.problems else "  — indisponible")
-            self.ws_combo.addItem(text, w.key)
+            self.ws_combo.addItem(_(w.label) + ("" if not w.problems else _("  — indisponible")), w.key)
             i = self.ws_combo.count() - 1
-            tip = w.description + ("\n\n⚠️ " + " ".join(w.problems) if w.problems else "")
-            self.ws_combo.setItemData(i, tip, Qt.ToolTipRole)
+            self.ws_combo.setItemData(i, _(w.description) + ("\n\n⚠️ " + " ".join(w.problems) if w.problems else ""),
+                                      Qt.ToolTipRole)
             if w.problems:
                 self.ws_combo.model().item(i).setEnabled(False)
             if w.key == self.ctx.settings.workspace:
                 self.ws_combo.setCurrentIndex(i)
-        if not self.ctx.workspaces:
-            self.ws_combo.addItem("Recherche des espaces Lean…")
         self.ws_combo.blockSignals(False)
 
     def _ws_changed(self, i: int):
@@ -353,35 +369,400 @@ class LeanPage(QWidget):
         self.ctx.settings.prove_attempts = v
         self.ctx.save_later()
 
-    def _nl_changed(self):
-        self.ctx.session["lean_nl"] = self.nl_edit.toPlainText()
+    def _pause_changed(self, on: bool):
+        self.ctx.settings.pause_after_translation = on
         self.ctx.save_later()
 
     def _editor_changed(self):
-        self.ctx.session["lean_editor"] = self.editor.toPlainText()
-        self.ctx.save_later()
-        if self.review_card.isVisible() and self.editor.toPlainText() != self._review_text:
-            self.review_card.hide()          # the user is editing the statement: the warning has been read
         if self.editor.extraSelections():
             self.editor.set_error_lines({})
 
-    def _update_file_label(self):
-        self.file_label.setText(f"📄 {Path(self.file_path).name}" if self.file_path else "(non enregistré)")
-        self.file_label.setToolTip(self.file_path or "Le texte de l'éditeur est conservé automatiquement entre deux sessions.")
+    # ================================================================ dossiers list + thread rendering
+    def refresh_list(self):
+        self.dossier_combo.blockSignals(True)
+        self.dossier_combo.clear()
+        cur = self.pipe.dossier
+        if cur is None:
+            self.dossier_combo.addItem(_("(nouveau problème)"), "")
+        for d in self.pipe.store.list():
+            when = _dt.datetime.fromtimestamp(d.updated).strftime("%d/%m %H:%M")
+            mark = "✅ " if d.proof else ("✍️ " if d.statement else "")
+            self.dossier_combo.addItem(f"{mark}{d.title}   ·   {when}", d.id)
+            if cur and d.id == cur.id:
+                self.dossier_combo.setCurrentIndex(self.dossier_combo.count() - 1)
+        self.dossier_combo.blockSignals(False)
 
-    def _status(self, title: str, detail: str = "", color: str | None = None):
-        self.status_title.setText(title)
-        self.status_title.setStyleSheet(f"color: {color};" if color else "")
-        self.status_detail.setText(detail)
+    def _combo_open(self, i: int):
+        did = self.dossier_combo.itemData(i)
+        if did and (not self.pipe.dossier or did != self.pipe.dossier.id):
+            if not self.pipe.open(did):
+                self.ctx.toast.emit(_("Une opération est en cours : arrêtez-la d'abord (Échap)."), None, None)
+                self.refresh_list()
 
-    def _need_ws(self):
-        ws = self.ctx.workspace()
-        if ws is None or ws.check():
-            self.ctx.banner.emit(friendly("workspace"), "\n".join(ws.problems) if ws else "Aucun espace sélectionné.")
-            return None
-        return ws
+    def refresh(self):
+        d = self.pipe.dossier
+        self.thread.setHtml(self._thread_html())
+        sb = self.thread.verticalScrollBar()
+        QTimer.singleShot(0, lambda: sb.setValue(sb.maximum()))
+        has_stmt = bool(d and d.statement)
+        has_proof = bool(d and d.proof_is_current)
+        self.quick.setVisible(has_stmt)
+        for b, need_proof in zip(self.quick_btns, (False, True, True, True)):
+            b.setVisible(has_proof or not need_proof)
+        self.rename_btn.setEnabled(d is not None)
+        self.delete_btn.setEnabled(d is not None and not self.pipe.busy)
+        self.input.setPlaceholderText(
+            _("Écrivez votre problème avec vos mots (français ou anglais, LaTeX accepté).\nExemple : « Montrer que la "
+              "somme de deux entiers pairs est paire. »") if not has_stmt else
+            _("Une précision, une correction ? Par exemple : « ajoute l'hypothèse n > 0 », « preuve plus courte », "
+              "« explique l'étape 2 »."))
+        self.send_btn.setText(_("✨ Prouver") if not has_stmt else _("Envoyer"))
+        self.stage_combo.setVisible(has_stmt)
+        self.stage_label.setVisible(has_stmt)
+        if d is None:
+            if not self.pipe.busy:
+                self._status(_("Nouveau problème"), _("Décrivez-le en bas, puis cliquez sur « Prouver » : l'IA le traduit "
+                                                      "en Lean, cherche une preuve, et l'explique."))
+            return
+        # artefacts
+        if d.statement and d.statement != self._editor_from_dossier:
+            self._editor_from_dossier = d.statement
+            self.editor.set_text_undoable(d.statement)
+        if d.statements:
+            v = d.statements[d.cur_statement]
+            src = _("écrit par vous") if v.source == "user" else _("traduit par l'IA")
+            ok = _("Lean l'accepte") if v.ok else _("Lean le refuse")
+            self.stmt_info.setText(_("Version {n} sur {t} · {src} · {ok}. Relisez-le : la preuve porte exactement sur "
+                                     "ce texte.").format(n=d.cur_statement + 1, t=len(d.statements), src=src, ok=ok))
+        else:
+            self.stmt_info.setText(_("Pas encore d'énoncé."))
+        if d.proof:
+            self.proof_view.setPlainText(d.proof)
+            note = "" if d.proof_is_current else _(" ⚠️ Cette preuve correspond à une ancienne version de l'énoncé.")
+            self.proof_info.setText(_("Preuve {n} sur {t}, vérifiée par Lean (sans « sorry », axiomes standard).").format(
+                n=d.cur_proof + 1, t=len(d.proofs)) + note)
+        else:
+            self.proof_view.clear()
+            self.proof_info.setText("")
+        if d.explanation and not self.pipe.stage == "explanation":
+            self.explain_view.setMarkdown(texio.display_markdown(d.explanation))
+        elif not d.explanation and not self.pipe.stage == "explanation":
+            self.explain_view.clear()
+        if not self.pipe.busy:
+            self._idle_status()
 
-    # ------------------------------------------------------------ verify
+    def _idle_status(self):
+        d = self.pipe.dossier
+        if not d:
+            return
+        last = d.events[-1] if d.events else None
+        if d.proof_is_current and d.explanation:
+            self._status(_("✅ Prouvé et expliqué"), _("Demandez une précision ci-dessous, ou exportez (onglet « Preuve »)."), theme.OK)
+        elif d.proof_is_current:
+            self._status(_("✅ Prouvé"), _("Lean a vérifié la preuve. Cliquez sur « 💬 Expliquer » pour une explication."), theme.OK)
+        elif last and last.kind == "error":
+            self._status(_("⚠️ À vous de jouer"), last.text, theme.WARN)
+        elif d.statement:
+            self._status(_("Énoncé prêt"), _("Relisez-le dans l'onglet « Énoncé Lean », puis cliquez sur « Prouver cet énoncé »."))
+        else:
+            self._status(_("Dossier vide"), _("Décrivez votre problème en bas."))
+
+    def _thread_html(self) -> str:
+        d = self.pipe.dossier
+        t, m = theme.TEXT, theme.MUTED
+        if d is None or not d.events:
+            ex = "".join(f"<li>{html.escape(_(e.blurb))}</li>" for e in EXAMPLES[1:5])
+            return (f"<div style='color:{m};padding:16px'><p style='font-size:13pt;color:{t}'><b>{_('Comment ça marche')}</b></p>"
+                    f"<p>① {_('Écrivez votre problème en bas, avec vos mots.')}<br>"
+                    f"② {_('L’IA le traduit en Lean, cherche une preuve que Lean vérifie, puis l’explique.')}<br>"
+                    f"③ {_('Vous pouvez ensuite demander des corrections ou des précisions : tout reste dans ce dossier.')}</p>"
+                    f"<p>{_('Idées :')}</p><ul>{ex}</ul></div>")
+        rows = []
+        for e in d.events:
+            when = _dt.datetime.fromtimestamp(e.t).strftime("%H:%M")
+            text = html.escape(e.text).replace("\n", "<br>")
+            if e.kind == "user":
+                tag = {"statement": _("énoncé"), "proof": _("preuve"), "explanation": _("explication")}.get(e.stage, "")
+                tag = f" <span style='color:{m}'>· {tag}</span>" if tag else ""
+                rows.append(f"<table cellpadding='9' cellspacing='0' style='margin:4px 0 4px 40px;background-color:#22304D'>"
+                            f"<tr><td><b>{_('Vous')}</b> <span style='color:{m}'>{when}</span>{tag}<br>{text}</td></tr></table>")
+                continue
+            color = {"statement": "#1D2A40", "proof": "#16301F", "explanation": "#2A2440", "error": "#3A1D20",
+                     "info": theme.PANEL}.get(e.kind, theme.PANEL)
+            icon = {"statement": "∀", "proof": "✅", "explanation": "💬", "error": "⚠️", "info": "ℹ️"}.get(e.kind, "•")
+            extra = ""
+            if e.kind == "statement" and e.ref is not None and e.ref < len(d.statements):
+                code = d.statements[e.ref].code
+                sig = code[code.rfind("theorem"):] if "theorem" in code else code
+                extra = (f"<pre style='font-family:monospace;color:{t};white-space:pre-wrap'>{html.escape(sig.strip())}</pre>"
+                         + self._version_links("statement", e.ref, d.cur_statement))
+            elif e.kind == "proof" and e.ref is not None and e.ref < len(d.proofs):
+                n = d.proofs[e.ref].code.count("\n")
+                extra = (f"<span style='color:{m}'>{_('{n} lignes de Lean').format(n=n)} · </span>"
+                         + self._version_links("proof", e.ref, d.cur_proof))
+            elif e.kind == "explanation" and e.ref is not None and e.ref < len(d.explanations):
+                full = d.explanations[e.ref].code
+                plain = re.sub(r"\*\*|__|`|^#+\s*", "", full, flags=re.M)
+                short = plain if len(plain) <= 280 else plain[:280].rsplit(" ", 1)[0] + " …"
+                extra = (f"<div style='color:{m}'>{html.escape(texio.display_markdown(short)).replace(chr(10), '<br>')}</div>"
+                         + self._version_links("explanation", e.ref, d.cur_explanation))
+            rows.append(f"<table cellpadding='9' cellspacing='0' style='margin:4px 0 4px 0;background-color:{color}'>"
+                        f"<tr><td><b>{icon}</b> <span style='color:{m}'>{when}</span><br>{text}{extra}</td></tr></table>")
+        return "".join(rows)
+
+    def _version_links(self, kind: str, idx: int, cur: int) -> str:
+        view = f"<a href='show:{kind}:{idx}' style='color:{theme.ACCENT_H}'>{_('Voir')}</a>"
+        if idx == cur:
+            return f"<br>{view} · <span style='color:{theme.OK}'>{_('version actuelle')}</span>"
+        return (f"<br>{view} · <a href='restore:{kind}:{idx}' style='color:{theme.ACCENT_H}'>"
+                f"{_('Revenir à cette version')}</a>")
+
+    def _anchor(self, url: QUrl):
+        parts = url.toString().split(":")
+        if len(parts) != 3:
+            return
+        action, kind, idx = parts[0], parts[1], int(parts[2])
+        tab = {"statement": 0, "proof": 1, "explanation": 2}[kind]
+        if action == "restore":
+            if self._running():
+                self.ctx.toast.emit(_("Une opération est en cours : arrêtez-la d'abord (Échap)."), None, None)
+                return
+            self.pipe.restore(kind, idx)
+        elif action == "show":
+            d = self.pipe.dossier
+            if kind == "statement":
+                self.editor.set_text_undoable(d.statements[idx].code)
+            elif kind == "proof":
+                self.proof_view.setPlainText(d.proofs[idx].code)
+            elif kind == "explanation":
+                self.explain_view.setMarkdown(texio.display_markdown(d.explanations[idx].code))
+        self.tabs.setCurrentIndex(tab)
+
+    # ================================================================ dossier actions
+    def new_dossier(self):
+        if self._running():
+            return
+        self.pipe.dossier = None
+        self.ctx.session.pop("dossier", None)
+        self._editor_from_dossier = ""
+        self.editor.clear()
+        self.file_path = ""
+        self.attempts.clear()
+        self.reasoning.clear()
+        self.errors_view.clear()
+        self.refresh_list()
+        self.refresh()
+        self.input.setFocus()
+
+    def rename_dossier(self):
+        d = self.pipe.dossier
+        if not d:
+            return
+        title, ok = QInputDialog.getText(self, _("Renommer le dossier"), _("Nouveau titre :"), text=d.title)
+        if ok:
+            self.pipe.rename(title)
+
+    def delete_dossier(self):
+        did = self.pipe.delete_current()
+        if not did:
+            return
+        self.new_dossier()
+        self.ctx.toast.emit(_("Dossier supprimé."), lambda: self.pipe.undelete(did), None)
+
+    # ================================================================ sending requests
+    def send(self):
+        if self._running():
+            return
+        text = self.input.toPlainText().strip()
+        if not text:
+            self.input.setFocus()
+            return
+        if self._need_ws() is None:
+            return
+        d = self.pipe.dossier
+        self.input.clear()
+        if d is None or not d.statement:
+            self.pipe.start(text) if d is None else self.pipe.request(text)
+        else:
+            self.pipe.request(text, STAGE_KEYS[self.stage_combo.currentIndex()])
+        self.stage_combo.setCurrentIndex(0)
+
+    def _quick(self, text: str, stage: str):
+        if stage == "statement":
+            self.stage_combo.setCurrentIndex(1)
+            self.input.setPlainText(_("L'énoncé est faux : "))
+            self.input.setFocus()
+            self.input.moveCursor(QTextCursor.End)
+            return
+        if self._running():
+            return
+        self.pipe.request(text, stage)
+
+    def start_problem(self, text: str):
+        """Home « Prouver un théorème »: new dossier, fully automatic chain."""
+        self.ctx.navigate.emit("lean")
+        if self._running():
+            self.ctx.toast.emit(_("Une opération est en cours : arrêtez-la d'abord (Échap)."), None, None)
+            return
+        if self._need_ws() is None:
+            return
+        self.pipe.start(text)
+
+    def start_statement(self, statement: str, problem: str = ""):
+        """Home examples: new dossier with a ready statement → prove → explain."""
+        self.ctx.navigate.emit("lean")
+        if self._running():
+            self.ctx.toast.emit(_("Une recherche est déjà en cours : arrêtez-la d'abord (Échap)."), None, None)
+            return
+        if self._need_ws() is None:
+            return
+        self.pipe.start_with_statement(statement, problem)
+
+    def start_example(self, ex):
+        self.start_statement(ex.statement, example_text(ex))
+
+    def prove(self):
+        if self._running():
+            return
+        code = self.editor.toPlainText()
+        try:
+            leancheck.theorem_name(leancheck.prepare_statement(code))
+        except leancheck.StatementError as e:
+            self.ctx.banner.emit(Friendly(_("Énoncé incomplet"), _(str(e)) + "\n" + _("Exemple : ") +
+                                          "theorem t (a : ℕ) : a + 0 = a := by sorry", [], "warn"), "")
+            return
+        if self._need_ws() is None:
+            return
+        d = self.pipe.dossier
+        if d is None:
+            self.pipe.start_with_statement(code, "", title=Path(self.file_path).stem if self.file_path else "")
+            return
+        if code.strip() != d.statement.strip():
+            self.pipe.set_statement(code)
+        self.pipe.prove_current()
+
+    def explain(self):
+        if self._running():
+            return
+        d = self.pipe.dossier
+        if not d or not d.proof:
+            self._status(_("Il n'y a pas encore de preuve à expliquer"),
+                         _("Lancez d'abord une preuve (« Prouver »)."), theme.WARN)
+            return
+        self.pipe.explain_current()
+
+    def stop(self):
+        if self.pipe.busy:
+            self.pipe.cancel()
+        elif self.ctx.verifier.busy:
+            self.ctx.verifier.cancel()
+
+    # ================================================================ pipeline feedback
+    def _stage(self, stage: str):
+        if not stage:
+            self._set_running(False)
+            self.refresh()
+            return
+        self._set_running(True)
+        self._flush.start()
+        texts = {"statement": (_("① Traduction en Lean…"), _("L'IA écrit l'énoncé en Lean, puis Lean contrôle qu'il est valide.")),
+                 "proof": (_("② Recherche de preuve…"), _("L'IA écrit une preuve ; si Lean la refuse, elle corrige et réessaie.")),
+                 "explanation": (_("③ Explication…"), _("L'IA explique la preuve en langage courant."))}[stage]
+        self._status(*texts)
+        self.busy.start(texts[0])
+        if stage == "explanation":
+            self._expl_live = ""
+            self.explain_view.clear()
+            self.tabs.setCurrentIndex(2)
+        else:
+            self._active = self.ctx.formalizer if stage == "statement" else self.ctx.prover
+            self.attempts.clear()
+            self.reasoning.clear()
+            self.tabs.setCurrentIndex(3)
+
+    def _loading(self, stage: str):
+        name = {"statement": _("du traducteur"), "proof": _("du prouveur"), "explanation": _("de l'explicateur")}[stage]
+        self.busy.start(_("Chargement {name} en mémoire graphique… (environ 5 à 30 s)").format(name=name))
+
+    def _attempt_started(self, i: int):
+        if self.sender() is not self._active:
+            return
+        a = self._active.attempts[i]
+        it = QListWidgetItem()
+        self.attempts.addItem(it)
+        self._render_item(i)
+        self._live_index = i
+        self.attempts.setCurrentRow(i)
+        self.reasoning.clear()
+        n = self._active.n
+        what = {"translation": _("traduit votre problème"), "initial": _("écrit une preuve"),
+                "refinement": _("réécrit la preuve selon votre demande")}.get(a.kind, _("écrit une correction"))
+        self.busy.start(_("Essai {i}/{n} : l'IA {what}…").format(i=i + 1, n=n, what=what), maximum=n)
+        self.busy.progress(i, n)
+
+    def _render_item(self, i: int):
+        attempts = self._active.attempts
+        if not (0 <= i < len(attempts)) or self.attempts.item(i) is None:
+            return
+        a = attempts[i]
+        extra = []
+        if a.tokens:
+            extra.append(_("{n} tokens, {s:.0f} tok/s").format(n=a.tokens, s=a.tps))
+        if a.compile_seconds:
+            extra.append(_("Lean {s:.0f} s").format(s=a.compile_seconds))
+        kind = {"initial": _("1re tentative"), "translation": _("traduction"), "refinement": _("selon votre demande")}.get(
+            a.kind, _("correction"))
+        self.attempts.item(i).setText(f"{STATUS_ICON.get(a.status, '•')} " + _("Essai {i} ({kind}) — {s}").format(
+            i=i + 1, kind=kind, s=_(a.summary) if a.summary else _(a.status)) + (f"   [{', '.join(extra)}]" if extra else ""))
+
+    def _token(self, i: int, t: str):
+        if self.sender() is self._active and i == self._live_index and self.attempts.currentRow() == i:
+            self._buf.append(t)
+
+    def _explain_token(self, t: str):
+        self._expl_live += t
+
+    def _flush_tokens(self):
+        if self._buf:
+            text, self._buf = "".join(self._buf), []
+            sb = self.reasoning.verticalScrollBar()
+            at_end = sb.value() >= sb.maximum() - 4
+            c = self.reasoning.textCursor()
+            c.movePosition(QTextCursor.End)
+            c.insertText(text)
+            if at_end:
+                sb.setValue(sb.maximum())
+        if self.pipe.stage == "explanation" and self._expl_live:
+            txt = leancheck.clean_model_text(self._expl_live) if ("</think>" in self._expl_live or
+                                                                  "<think>" not in self._expl_live) else ""
+            if txt:
+                self.explain_view.setMarkdown(texio.display_markdown(txt))
+                self.explain_view.verticalScrollBar().setValue(self.explain_view.verticalScrollBar().maximum())
+
+    def _attempt_updated(self, i: int):
+        if self.sender() is not self._active:
+            return
+        self._render_item(i)
+        a = self._active.attempts[i] if i < len(self._active.attempts) else None
+        if a and a.status == "compilation":
+            what = _("l'énoncé") if a.kind == "translation" else _("la preuve")
+            self.busy.start(_("Essai {i}/{n} : Lean vérifie {what}…").format(i=i + 1, n=self._active.n, what=what),
+                            maximum=self._active.n)
+            self.busy.progress(i, self._active.n)
+        if self.attempts.currentRow() == i:
+            self._show_attempt(i)
+
+    def _show_attempt(self, i: int):
+        attempts = self._active.attempts
+        if not (0 <= i < len(attempts)):
+            return
+        a = attempts[i]
+        self._buf = []
+        self.reasoning.setPlainText(a.raw)
+        self.reasoning.verticalScrollBar().setValue(self.reasoning.verticalScrollBar().maximum())
+        self.errors_view.setPlainText(a.errors_text or _(a.summary) or "")
+
+    # ================================================================ verify a file / statement
     def verify(self):
         if self._running():
             return
@@ -390,562 +771,205 @@ class LeanPage(QWidget):
             return
         code = self.editor.toPlainText()
         if not code.strip():
-            self._status("L'éditeur est vide", "Écrivez du code Lean ou choisissez un exemple (bouton « Exemples »).", theme.WARN)
+            self._status(_("L'éditeur est vide"), _("Écrivez du code Lean, ou ouvrez un fichier .lean."), theme.WARN)
             return
-        self._active = _NoAttempts()          # the list below shows Lean messages, not AI attempts
+        self._active = _NoAttempts()
         self._set_running(True)
-        self.busy.start("Lean vérifie le fichier… (quelques secondes ; jusqu'à 1 minute la première fois)")
-        self._status("Vérification en cours…", f"Espace : {ws.label}")
+        self.busy.start(_("Lean vérifie le texte… (quelques secondes ; jusqu'à 1 minute la première fois)"))
+        self._status(_("Vérification en cours…"), _("Espace : {ws}").format(ws=_(ws.label)))
         self.editor.set_error_lines({})
         self.ctx.verifier.compile(code, ws, self.ctx.settings.compile_timeout_s, None)
 
     def _verified(self, res: CompileResult):
         self._set_running(False)
         if res.cancelled:
-            self._status("Vérification annulée", "", theme.MUTED)
+            self._status(_("Vérification annulée"), "", theme.MUTED)
             return
         if res.infra_error and not res.verdict.errors:
-            self._status("Lean n'a pas pu vérifier", res.verdict.summary, theme.ERR)
+            self._status(_("Lean n'a pas pu vérifier"), _(res.verdict.summary), theme.ERR)
             self.ctx.banner.emit(friendly("workspace"), res.infra_error)
             return
         v = res.verdict
-        self.stack.setCurrentIndex(1)
         self.attempts.clear()
-        self.final_card.hide()
-        lines = {}
-        out = []
+        lines, out = {}, []
         for m in leancheck.parse_lean_json(res.stdout):
-            sev = {"error": "❌ Erreur", "warning": "⚠️ Avertissement", "information": "ℹ️ Info"}.get(m.severity, m.severity)
-            out.append(f"{sev} — ligne {m.line}, colonne {m.col + 1} :\n{m.text}\n")
+            sev = {"error": _("❌ Erreur"), "warning": _("⚠️ Avertissement"), "information": _("ℹ️ Info")}.get(m.severity, m.severity)
+            out.append(_("{sev} — ligne {l}, colonne {c} :").format(sev=sev, l=m.line, c=m.col + 1) + f"\n{m.text}\n")
             if m.severity == "error":
                 lines[m.line] = m.text
-            it = QListWidgetItem(f"{sev}, ligne {m.line} : {m.text.splitlines()[0][:110] if m.text else ''}")
+            it = QListWidgetItem(_("{sev}, ligne {l} : {t}").format(sev=sev, l=m.line, t=m.text.splitlines()[0][:110] if m.text else ""))
             it.setData(Qt.UserRole, m.line)
             it.setToolTip(m.text)
             self.attempts.addItem(it)
-        self.errors_view.setPlainText("\n".join(out) or "Aucun message : tout est correct.")
-        self.code_view.setPlainText(res.code)
-        self.reasoning.setPlainText("(Vérification simple : pas d'IA utilisée.)")
-        self.tabs.setCurrentIndex(2)
+        self.errors_view.setPlainText("\n".join(out) or _("Aucun message : tout est correct."))
+        self.tabs.setCurrentIndex(4)
         self.editor.set_error_lines(lines)
         if v.ok:
-            self._status("✅ " + v.summary, f"Vérifié en {res.seconds:.1f} s.", theme.OK)
+            self._status("✅ " + _(v.summary), _("Vérifié en {s:.1f} s.").format(s=res.seconds), theme.OK)
         elif v.has_sorry and not v.errors:
-            self._status("⚠️ Accepté, mais incomplet", "Le fichier contient « sorry » : certaines preuves manquent. "
-                         "Cliquez sur « Prouver » pour que l'IA les complète.", theme.WARN)
+            self._status(_("⚠️ Accepté, mais incomplet"), _("Le texte contient « sorry » : une preuve manque. "
+                         "Cliquez sur « Prouver cet énoncé » pour que l'IA la cherche."), theme.WARN)
         elif res.timed_out:
-            self._status("⏱ " + v.summary, "Augmentez le délai dans « Système » ou simplifiez le fichier.", theme.WARN)
+            self._status("⏱ " + _(v.summary), _("Augmentez le délai dans « Système » ou simplifiez le fichier."), theme.WARN)
         else:
-            self._status("❌ " + v.summary, "Les lignes en rouge contiennent des erreurs. Double-cliquez sur un message "
-                         "pour aller à la ligne.", theme.ERR)
+            self._status("❌ " + _(v.summary), _("Les lignes en rouge contiennent des erreurs. Double-cliquez sur un "
+                         "message (onglet « Essais ») pour aller à la ligne."), theme.ERR)
 
     def _goto_line(self, item: QListWidgetItem):
         ln = item.data(Qt.UserRole)
         if isinstance(ln, int):
+            self.tabs.setCurrentIndex(0)
             block = self.editor.document().findBlockByNumber(ln - 1)
             c = self.editor.textCursor()
             c.setPosition(block.position())
             self.editor.setTextCursor(c)
             self.editor.setFocus()
 
-    # ------------------------------------------------------------ prove
-    def prove_statement(self, statement: str, nl: str = ""):
-        """Called from Home examples: load the statement (and its plain-language text) and start immediately."""
-        self.ctx.navigate.emit("lean")
-        if self._running():
-            self.ctx.toast.emit("Une recherche est déjà en cours : arrêtez-la d'abord (Échap).", None, None)
-            return
-        if nl:
-            self.nl_edit.setPlainText(nl)
-        self.review_card.hide()
-        self.editor.set_text_undoable(statement + "\n")
-        self.prove()
-
-    def load_example(self, ex):
-        self.nl_edit.setPlainText(ex.blurb)
-        self.review_card.hide()
-        self.editor.set_text_undoable(ex.statement + "\n")
-
-    # ------------------------------------------------------------ translate (natural language → Lean)
-    def translate_text(self, text: str):
-        """Called from Home: put the problem in the box and translate it."""
-        self.ctx.navigate.emit("lean")
-        if self._running():
-            self.ctx.toast.emit("Une opération est en cours : arrêtez-la d'abord (Échap).", None, None)
-            return
-        self.nl_edit.setPlainText(text)
-        self.translate()
-
-    def translate(self):
+    # ================================================================ files
+    def _load_text_for_check(self, text: str, title: str):
         if self._running():
             return
-        text = self.nl_edit.toPlainText().strip()
-        if not text:
-            self._status("Décrivez d'abord votre problème", "Écrivez-le dans la zone ① (en français ou en anglais), "
-                         "ou choisissez « Exemples ».", theme.WARN)
-            self.nl_edit.setFocus()
-            return
-        if self.ctx.formalizer_model() is None:
-            self.ctx.banner.emit(friendly("no_formalizer"), "")
-            return
-        ws = self._need_ws()
-        if not ws:
-            return
-        self._pending_translate = True
-        self._active = self.ctx.formalizer
-        self._set_running(True)
-        self.stack.setCurrentIndex(1)
-        self.attempts.clear()
-        self.reasoning.clear()
-        self.code_view.clear()
-        self.errors_view.clear()
-        self.final_card.hide()
-        self.review_card.hide()
-        target = self.ctx.formalizer_model()
-        if not (self.ctx.server.state == "ready" and self.ctx.server.model_path == target):
-            self.busy.start("Chargement du traducteur en mémoire graphique… (environ 10 à 30 s)")
-            self._status("Préparation…", "Le modèle de traduction se charge ; la traduction démarrera automatiquement.")
-        self.ctx.ensure_model(self._start_translation, role="formalizer")
-
-    def _start_translation(self):
-        if not self._pending_translate:
-            return
-        self._pending_translate = False
-        ws = self.ctx.workspace()
-        if ws is None:
-            self._set_running(False)
-            return
-        self._active = self.ctx.formalizer
-        self.busy.start("L'IA traduit votre problème…")
-        self.ctx.formalizer.start(self.nl_edit.toPlainText(), ws, self.ctx.settings.translate_attempts,
-                                  self.ctx.settings.compile_timeout_s)
-        self._status("Traduction en cours…", "L'IA réfléchit, écrit l'énoncé en Lean, puis Lean contrôle qu'il est valide.")
-        self._flush.start()
-
-    def _translate_finished(self, ok: bool, summary: str):
-        self._flush_tokens()
-        self._flush.stop()
-        self._set_running(False)
-        f = self.ctx.formalizer
-        if "arrêtée" in summary:
-            self._status("⏹ " + summary, "Vous pouvez relancer avec « Traduire en Lean ».", theme.MUTED)
-            return
-        if not f.statement:
-            self._status("❌ L'IA n'a pas produit d'énoncé", "Reformulez le problème (plus précis, avec les hypothèses) "
-                         "et réessayez, ou écrivez l'énoncé vous-même dans la zone ②.", theme.ERR)
-            return
-        self.editor.set_text_undoable(f.statement)
-        self._review_text = self.editor.toPlainText()
-        self.review_card.show()
-        if ok:
-            self._status("✅ Énoncé traduit — à relire", "Lean comprend cet énoncé. Vérifiez dans la zone ② qu'il dit bien "
-                         "ce que vous voulez, puis cliquez sur « C'est bon : prouver ».", theme.OK)
-        else:
-            self.editor.set_error_lines({m.line: m.text for m in f.errors if m.severity == "error"})
-            self._status("⚠️ Traduction à corriger", summary + " Les lignes en rouge sont refusées par Lean.", theme.WARN)
-
-    # ------------------------------------------------------------ explain a proof in French
-    def explain_final(self):
-        self._explain(self.final_view.toPlainText())
-
-    def explain_editor(self):
-        code = self.editor.toPlainText()
-        if not leancheck.has_real_proof(code):
-            self._status("Il n'y a pas encore de preuve à expliquer", "La zone ② ne contient qu'un énoncé (« sorry »). "
-                         "Cliquez d'abord sur « Prouver », ou collez une preuve Lean.", theme.WARN)
-            return
-        self._explain(code)
-
-    def _explain(self, code: str):
-        if self._running() or not code.strip():
-            return
-        if self.ctx.explainer_model() is None:
-            self.ctx.banner.emit(friendly("no_explainer"), "")
-            return
-        self._pending_explain = True
-        self._expl_code = code
-        self._set_running(True)
-        self.stack.setCurrentIndex(1)
-        self.explain_view.clear()
-        self._explanation = ""
-        self._expl_text = ""
-        self.tabs.setCurrentWidget(self.explain_view)
-        if not (self.ctx.server.state == "ready" and self.ctx.server.model_path == self.ctx.explainer_model()):
-            self.busy.start("Chargement du modèle d'explication… (environ 10 à 30 s)")
-            self._status("Préparation…", "Le modèle qui rédige les explications se charge ; elle démarrera automatiquement.")
-        self.ctx.ensure_model(self._start_explain, role="explainer")
-
-    def _start_explain(self):
-        if not self._pending_explain:
-            return
-        self._pending_explain = False
-        self.busy.start("L'IA rédige l'explication…")
-        self._status("Explication en cours…", "L'IA lit la preuve et l'explique en français (environ 20 s).")
-        self._flush.start()
-        self.ctx.explainer.start(self._expl_code, self.nl_edit.toPlainText())
-
-    def _explain_token(self, t: str):
-        self._expl_text += t
-        self._expl_buf.append(t)
-
-    def _render_explanation(self):
-        text = leancheck.clean_model_text(self._expl_text) if "</think>" in self._expl_text or "<think>" not in self._expl_text else ""
-        if text:
-            self.explain_view.setMarkdown(texio.display_markdown(text))
-
-    def _explain_finished(self, ok: bool, text: str, summary: str):
-        self._flush.stop()
-        self._set_running(False)
-        if ok:
-            self._explanation = text
-            self.explain_view.setMarkdown(texio.display_markdown(text))
-            self.tabs.setCurrentWidget(self.explain_view)
-            self._status("✅ " + summary, "Cette explication est rédigée par une IA : la preuve Lean, elle, est vérifiée. "
-                         "Elle sera ajoutée à l'export LaTeX.", theme.OK)
-        else:
-            self._status("⏹ " + summary, "", theme.MUTED)
-
-    def copy_explanation(self):
-        if not self._explanation:
-            self.ctx.toast.emit("Aucune explication à copier : cliquez d'abord sur « 💬 Expliquer ».", None, None)
-            return
-        QGuiApplication.clipboard().setText(texio.display_markdown(self._explanation))
-        self.ctx.toast.emit("Explication copiée.", None, None)
-
-    # ------------------------------------------------------------ LaTeX in / out
-    def import_tex(self):
-        start = self.ctx.session.get("last_dir", str(Path.home()))
-        path, _ = QFileDialog.getOpenFileName(self, "Importer un fichier LaTeX", start, "Fichiers LaTeX (*.tex);;Tous (*)")
-        if path:
-            self.load_tex(path)
-
-    def load_tex(self, path: str):
-        """Read a .tex file, let the user pick a theorem/lemma/exercise, and put it in the problem box."""
-        self.ctx.navigate.emit("lean")
-        if self._running():
-            self.ctx.toast.emit("Une opération est en cours : arrêtez-la d'abord (Échap).", None, None)
-            return
-        try:
-            tex = Path(path).read_text(encoding="utf-8", errors="replace")
-        except OSError as e:
-            self.ctx.banner.emit(Friendly("Impossible d'ouvrir le fichier", "Le fichier n'est pas lisible (droits).",
-                                          [], "warn"), str(e))
-            return
-        items = texio.extract_statements(tex)
-        if not items:
-            self.ctx.banner.emit(Friendly("Aucun énoncé trouvé", "Ce fichier .tex ne contient ni théorème, ni lemme, "
-                                          "ni exercice, ni texte exploitable.", [], "warn"), "")
-            return
-        chosen = items[0]
-        if len(items) > 1:
-            labels = [f"{it.title} : {it.body.replace(chr(10), ' ')[:70]}…" for it in items]
-            pick, ok = QInputDialog.getItem(self, "Choisir l'énoncé", "Ce fichier contient plusieurs énoncés.\n"
-                                            "Lequel voulez-vous traduire en Lean ?", labels, 0, False)
-            if not ok:
-                return
-            chosen = items[labels.index(pick)]
-        self.ctx.session["last_dir"] = str(Path(path).parent)
-        self.nl_edit.setPlainText(chosen.body)
-        self.review_card.hide()
-        self.ctx.toast.emit(f"Importé : {chosen.title}. Cliquez sur « Traduire en Lean ».", None, None)
-
-    def latex_source(self) -> str:
-        code = self.final_view.toPlainText()
-        try:
-            name = leancheck.theorem_name(code)
-        except leancheck.StatementError:
-            name = "theoreme"
-        stmt = ""
-        try:
-            full = leancheck.prepare_statement(self.editor.toPlainText())
-            k = full.index("theorem")
-            stmt = full[k:]
-        except (leancheck.StatementError, ValueError):
-            pass
-        ws = self.ctx.workspace()
-        meta = f"{ws.label.split(' (')[0]}, Lean {ws.toolchain.split(':')[-1].lstrip('v')}" if ws else ""
-        return texio.export_document(self.nl_edit.toPlainText(), stmt, code, name, meta, explanation=self._explanation)
-
-    def export_tex(self):
-        try:
-            name = leancheck.theorem_name(self.final_view.toPlainText()) + ".tex"
-        except leancheck.StatementError:
-            name = "preuve.tex"
-        start = self.ctx.session.get("last_dir", str(Path.home() / "Documents"))
-        path, _ = QFileDialog.getSaveFileName(self, "Enregistrer en LaTeX", str(Path(start) / name), "Fichiers LaTeX (*.tex)")
-        if not path:
-            return
-        if not path.endswith(".tex"):
-            path += ".tex"
-        try:
-            Path(path).write_text(self.latex_source(), encoding="utf-8")
-        except OSError as e:
-            self.ctx.banner.emit(Friendly("Enregistrement impossible", "Choisissez un autre dossier.", [], "warn"), str(e))
-            return
-        self.ctx.session["last_dir"] = str(Path(path).parent)
-        self.ctx.toast.emit(f"Enregistré : {Path(path).name}. Dans Overleaf : « Nouveau projet → Téléverser », "
-                            "compilateur XeLaTeX.", None, None)
-
-    def copy_tex(self):
-        QGuiApplication.clipboard().setText(self.latex_source())
-        self.ctx.toast.emit("Code LaTeX copié : collez-le dans un fichier .tex d'Overleaf (compilateur XeLaTeX).", None, None)
-
-    def open_overleaf(self):
-        QDesktopServices.openUrl(QUrl(self.ctx.settings.overleaf_url))
-
-    def prove(self):
-        if self._running():
-            return
-        try:
-            leancheck.theorem_name(leancheck.prepare_statement(self.editor.toPlainText()))
-        except leancheck.StatementError as e:
-            self.ctx.banner.emit(Friendly("Énoncé incomplet", str(e) + "\nExemple : theorem t (a : ℕ) : a + 0 = a := by sorry",
-                                          [], "warn"), "")
-            return
-        ws = self._need_ws()
-        if not ws:
-            return
-        self._pending_prove = True
-        self._active = self.ctx.prover
-        self.review_card.hide()
-        self._set_running(True)
-        self.stack.setCurrentIndex(1)
-        self.attempts.clear()
-        self.reasoning.clear()
-        self.code_view.clear()
-        self.errors_view.clear()
-        self.final_card.hide()
-        if not (self.ctx.server.state == "ready" and self.ctx.server.model_path == self.ctx.default_model()):
-            self.busy.start("Chargement du modèle en mémoire graphique… (environ 10 à 30 s)")
-            self._status("Préparation…", "Le modèle d'IA se charge, la recherche démarrera automatiquement.")
-        self.ctx.ensure_model(self._start_prover)
-
-    def _start_prover(self):
-        if not self._pending_prove:
-            return
-        self._pending_prove = False
-        ws = self.ctx.workspace()
-        if ws is None:
-            self._set_running(False)
-            return
-        self._active = self.ctx.prover
-        self.busy.start("L'IA réfléchit…")
-        try:
-            self.ctx.prover.start(self.editor.toPlainText(), ws, self.tries.value(), self.ctx.settings.sampling,
-                                  self.ctx.settings.compile_timeout_s,
-                                  self.ctx.server.plan.ctx if self.ctx.server.plan else self.ctx.settings.server.ctx_size)
-        except leancheck.StatementError as e:
-            self._set_running(False)
-            self.ctx.banner.emit(Friendly("Énoncé incomplet", str(e), [], "warn"), "")
-            return
-        self._status("Recherche de preuve…", f"Jusqu'à {self.tries.value()} essais. Espace : {ws.label}")
-        self._flush.start()
-
-    def _loading_failed(self, *_):
-        if self._pending_prove or self._pending_translate or self._pending_explain:
-            self._pending_prove = self._pending_translate = self._pending_explain = False
-            self._set_running(False)
-            self._status("Le modèle n'a pas pu être chargé", "Voir le message en haut de la fenêtre.", theme.ERR)
-
-    def _server_state(self, st: str):
-        if st == "stopped" and self._pending_prove and not self.ctx.server.proc:
-            pass  # failure path handled by _loading_failed
-
-    def stop(self):
-        if self.ctx.explainer.running:
-            self.ctx.explainer.cancel()
-            return
-        if self._pending_prove or self._pending_translate or self._pending_explain:
-            self._pending_prove = self._pending_translate = self._pending_explain = False
-            self.ctx._after_ready.clear()
-            self._set_running(False)
-            self._status("Arrêté", "Le chargement continue en arrière-plan ; vous pourrez relancer.", theme.MUTED)
-            return
-        if self.ctx.prover.running:
-            self.ctx.prover.cancel()
-        elif self.ctx.formalizer.running:
-            self.ctx.formalizer.cancel()
-        elif self.ctx.verifier.busy:
-            self.ctx.verifier.cancel()
-
-    def _attempt_started(self, i: int):
-        a = self._active.attempts[i]
-        it = QListWidgetItem()
-        self.attempts.addItem(it)
-        self._render_item(i)
-        self._live_index = i
-        self.attempts.setCurrentRow(i)
-        self.reasoning.clear()
+        self.new_dossier()
+        self.pipe.new(title=title)
+        self.editor.set_text_undoable(text)
         self.tabs.setCurrentIndex(0)
-        n = self._active.n
-        what = ("traduit votre problème" if a.kind == "translation" else
-                "écrit une preuve" if a.kind == "initial" else "écrit une correction")
-        self.busy.start(f"Essai {i + 1}/{n} : l'IA {what}…", maximum=n)
-        self.busy.progress(i, n)
+        self.verify()
 
-    def _render_item(self, i: int):
-        a = self._active.attempts[i]
-        it = self.attempts.item(i)
-        if it is None:
-            return
-        extra = []
-        if a.tokens:
-            extra.append(f"{a.tokens} tokens, {a.tps:.0f} tok/s")
-        if a.compile_seconds:
-            extra.append(f"Lean {a.compile_seconds:.0f} s")
-        kind = {"initial": "1re tentative", "translation": "traduction"}.get(a.kind, "correction")
-        it.setText(f"{STATUS_ICON.get(a.status, '•')} Essai {i + 1} ({kind}) — {a.summary or a.status}"
-                   + (f"   [{', '.join(extra)}]" if extra else ""))
-
-    def _token(self, i: int, t: str):
-        if i == self._live_index and self.attempts.currentRow() == i:
-            self._buf.append(t)
-
-    def _flush_tokens(self):
-        if self._expl_buf:
-            self._expl_buf = []
-            self._render_explanation()
-        if not self._buf:
-            return
-        text, self._buf = "".join(self._buf), []
-        sb = self.reasoning.verticalScrollBar()
-        at_end = sb.value() >= sb.maximum() - 4
-        c = self.reasoning.textCursor()
-        c.movePosition(QTextCursor.End)
-        c.insertText(text)
-        if at_end:
-            sb.setValue(sb.maximum())
-
-    def _attempt_updated(self, i: int):
-        self._render_item(i)
-        a = self._active.attempts[i]
-        if a.status == "compilation":
-            what = "l'énoncé" if a.kind == "translation" else "la preuve"
-            self.busy.start(f"Essai {i + 1}/{self._active.n} : Lean vérifie {what}…", maximum=self._active.n)
-            self.busy.progress(i, self._active.n)
-        if self.attempts.currentRow() == i:
-            self._show_attempt(i)
-
-    def _show_attempt(self, i: int):
-        attempts = self._active.attempts
-        if not (0 <= i < len(attempts)) or not attempts:
-            return
-        a = attempts[i]
-        self._buf = []
-        self.reasoning.setPlainText(a.raw)
-        self.reasoning.verticalScrollBar().setValue(self.reasoning.verticalScrollBar().maximum())
-        self.code_view.setPlainText(a.code or "(pas de code extrait)")
-        self.errors_view.setPlainText(a.errors_text or a.summary or "")
-
-    def _prove_finished(self, ok: bool, summary: str):
-        self._flush_tokens()
-        self._flush.stop()
-        self._set_running(False)
-        p = self.ctx.prover
-        if ok:
-            self.final_view.setPlainText(p.final_code)
-            self._explanation = ""
-            self.explain_view.clear()
-            self.final_card.show()
-            self.l4w_btn.setVisible(lean4web_url() is not None)
-            a = p.attempts[-1]
-            self._status("✅ " + summary, f"Lean a accepté la preuve (sans « sorry », axiomes standard uniquement). "
-                         f"Génération {a.gen_seconds:.0f} s à {a.tps:.0f} tokens/s, vérification {a.compile_seconds:.0f} s.",
-                         theme.OK)
-            self.ctx.session["last_proof"] = p.final_code
-            self.ctx.save_later()
-        elif "arrêtée" in summary:
-            self._status("⏹ " + summary, "Vous pouvez relancer avec « Prouver ».", theme.MUTED)
-        else:
-            self._status("❌ " + summary, "Essayez d'augmenter le nombre d'essais, de simplifier l'énoncé, "
-                         "ou de changer d'espace Lean.", theme.ERR)
-
-    def _infra_error(self, kind: str, details: str):
-        self._flush.stop()
-        self._set_running(False)
-        if kind == "server_down":
-            f = friendly("server_crashed") if self.ctx.server.state != "ready" else friendly("generation")
-            self._status("⚠️ Le moteur d'IA ne répond plus", "Cliquez sur « Redémarrer le modèle » dans le message en haut.",
-                         theme.ERR)
-        elif kind == "workspace":
-            f = friendly("workspace")
-            self._status("⚠️ Lean n'a pas pu vérifier", details[:300], theme.ERR)
-        else:
-            f = friendly(kind)
-            self._status("⚠️ Problème pendant la génération", "", theme.ERR)
-        self.ctx.banner.emit(f, details)
-
-    # ------------------------------------------------------------ files
     def open_file(self):
         start = self.file_path or self.ctx.session.get("last_dir", str(Path.home()))
-        path, _ = QFileDialog.getOpenFileName(self, "Ouvrir un fichier Lean", start, "Fichiers Lean (*.lean);;Tous (*)")
+        path, _f = QFileDialog.getOpenFileName(self, _("Ouvrir un fichier Lean"), start, _("Fichiers Lean (*.lean);;Tous (*)"))
         if path:
             self.load_file(path)
 
     def load_file(self, path: str, verify: bool = True):
-        """Open a .lean file in the editor and (by default) verify it immediately."""
+        """Open a .lean file in a new dossier and (by default) verify it immediately."""
         self.ctx.navigate.emit("lean")
         if self._running():
-            self.ctx.toast.emit("Une opération est en cours : arrêtez-la d'abord (Échap).", None, None)
+            self.ctx.toast.emit(_("Une opération est en cours : arrêtez-la d'abord (Échap)."), None, None)
             return
         try:
             text = Path(path).read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError) as e:
-            self.ctx.banner.emit(Friendly("Impossible d'ouvrir le fichier", "Le fichier n'est pas lisible (droits ou "
-                                          "encodage). Choisissez un autre fichier.", [], "warn"), str(e))
+            self.ctx.banner.emit(Friendly(_("Impossible d'ouvrir le fichier"), _("Le fichier n'est pas lisible (droits "
+                                          "ou encodage). Choisissez un autre fichier."), [], "warn"), str(e))
             return
-        self.editor.set_text_undoable(text)
-        self.file_path = path
-        self.ctx.session["lean_file"] = path
         self.ctx.session["last_dir"] = str(Path(path).parent)
-        self._update_file_label()
-        self.ctx.toast.emit(f"Fichier ouvert : {Path(path).name}", None, None)
+        self.new_dossier()
+        self.pipe.new(title=Path(path).name)
+        self.file_path = path
+        self.editor.set_text_undoable(text)
+        self.tabs.setCurrentIndex(0)
+        self.ctx.toast.emit(_("Fichier ouvert : {name}").format(name=Path(path).name), None, None)
         if verify:
             self.verify()
 
-    def _save_text(self, text: str, suggested: str) -> str | None:
+    def _save_text(self, text: str, suggested: str, filt: str) -> str | None:
         start = self.ctx.session.get("last_dir", str(Path.home() / "Documents"))
-        path, _ = QFileDialog.getSaveFileName(self, "Enregistrer", str(Path(start) / suggested), "Fichiers Lean (*.lean)")
+        path, _f = QFileDialog.getSaveFileName(self, _("Enregistrer"), str(Path(start) / suggested), filt)
         if not path:
             return None
-        if not path.endswith(".lean"):
-            path += ".lean"
+        ext = Path(suggested).suffix
+        if not path.endswith(ext):
+            path += ext
         try:
             Path(path).write_text(text, encoding="utf-8")
         except OSError as e:
-            self.ctx.banner.emit(Friendly("Enregistrement impossible", "Choisissez un autre dossier.", [], "warn"), str(e))
+            self.ctx.banner.emit(Friendly(_("Enregistrement impossible"), _("Choisissez un autre dossier."), [], "warn"), str(e))
             return None
         self.ctx.session["last_dir"] = str(Path(path).parent)
-        self.ctx.toast.emit(f"Enregistré : {Path(path).name}", None, None)
+        self.ctx.toast.emit(_("Enregistré : {name}").format(name=Path(path).name), None, None)
         return path
 
+    def _name(self) -> str:
+        d = self.pipe.dossier
+        return d.theorem if d and d.theorem else "preuve"
+
     def save_file(self):
-        if self.file_path:
-            try:
-                Path(self.file_path).write_text(self.editor.toPlainText(), encoding="utf-8")
-                self.ctx.toast.emit(f"Enregistré : {Path(self.file_path).name}", None, None)
-                return
-            except OSError:
-                pass
-        p = self._save_text(self.editor.toPlainText(), "exercice.lean")
+        p = self._save_text(self.editor.toPlainText(), self._name() + ".lean", _("Fichiers Lean (*.lean)"))
         if p:
             self.file_path = p
-            self.ctx.session["lean_file"] = p
-            self._update_file_label()
 
     def save_final(self):
-        name = "preuve.lean"
-        try:
-            name = leancheck.theorem_name(self.final_view.toPlainText()) + ".lean"
-        except leancheck.StatementError:
-            pass
-        self._save_text(self.final_view.toPlainText(), name)
+        if self.proof_view.toPlainText().strip():
+            self._save_text(self.proof_view.toPlainText(), self._name() + ".lean", _("Fichiers Lean (*.lean)"))
 
     def copy_final(self):
-        QGuiApplication.clipboard().setText(self.final_view.toPlainText())
-        self.ctx.toast.emit("Preuve copiée dans le presse-papiers.", None, None)
+        QGuiApplication.clipboard().setText(self.proof_view.toPlainText())
+        self.ctx.toast.emit(_("Preuve copiée dans le presse-papiers."), None, None)
+
+    def copy_explanation(self):
+        d = self.pipe.dossier
+        if not d or not d.explanation:
+            self.ctx.toast.emit(_("Aucune explication à copier."), None, None)
+            return
+        QGuiApplication.clipboard().setText(texio.display_markdown(d.explanation))
+        self.ctx.toast.emit(_("Explication copiée."), None, None)
 
     def open_lean4web(self):
         base = lean4web_url()
         if base:
-            QDesktopServices.openUrl(QUrl(base + "/#code=" + urllib.parse.quote(self.final_view.toPlainText())))
+            QDesktopServices.openUrl(QUrl(base + "/#code=" + urllib.parse.quote(self.proof_view.toPlainText())))
+        else:
+            self.ctx.toast.emit(_("Lean4Web ne répond pas sur cet ordinateur."), None, None)
+
+    # ================================================================ LaTeX in / out
+    def import_tex(self):
+        start = self.ctx.session.get("last_dir", str(Path.home()))
+        path, _f = QFileDialog.getOpenFileName(self, _("Importer un fichier LaTeX"), start, _("Fichiers LaTeX (*.tex);;Tous (*)"))
+        if path:
+            self.load_tex(path)
+
+    def load_tex(self, path: str):
+        """Read a .tex file, let the user pick a statement, and prepare a new dossier with it."""
+        self.ctx.navigate.emit("lean")
+        if self._running():
+            self.ctx.toast.emit(_("Une opération est en cours : arrêtez-la d'abord (Échap)."), None, None)
+            return
+        try:
+            tex = Path(path).read_text(encoding="utf-8", errors="replace")
+        except OSError as e:
+            self.ctx.banner.emit(Friendly(_("Impossible d'ouvrir le fichier"), _("Le fichier n'est pas lisible (droits)."),
+                                          [], "warn"), str(e))
+            return
+        items = texio.extract_statements(tex)
+        if not items:
+            self.ctx.banner.emit(Friendly(_("Aucun énoncé trouvé"), _("Ce fichier .tex ne contient ni théorème, ni lemme, "
+                                          "ni exercice, ni texte exploitable."), [], "warn"), "")
+            return
+        chosen = items[0]
+        if len(items) > 1:
+            labels = [f"{_(it.title)} : {it.body.replace(chr(10), ' ')[:70]}…" for it in items]
+            pick, ok = QInputDialog.getItem(self, _("Choisir l'énoncé"), _("Ce fichier contient plusieurs énoncés.\n"
+                                            "Lequel voulez-vous prouver ?"), labels, 0, False)
+            if not ok:
+                return
+            chosen = items[labels.index(pick)]
+        self.ctx.session["last_dir"] = str(Path(path).parent)
+        self.new_dossier()
+        self.input.setPlainText(chosen.body)
+        self.ctx.toast.emit(_("Importé : {t}. Cliquez sur « Prouver ».").format(t=_(chosen.title)), None, None)
+
+    def latex_source(self) -> str:
+        d = self.pipe.dossier
+        code = self.proof_view.toPlainText()
+        stmt = ""
+        if d and d.statement:
+            stmt = d.statement[d.statement.rfind("theorem"):]
+        ws = self.ctx.workspace()
+        meta = f"{_(ws.label).split(' (')[0]}, Lean {ws.toolchain.split(':')[-1].lstrip('v')}" if ws else ""
+        return texio.export_document(d.problem if d else "", stmt, code, self._name(), meta,
+                                     explanation=d.explanation if d else "")
+
+    def export_tex(self):
+        if not self.proof_view.toPlainText().strip():
+            self.ctx.toast.emit(_("Il n'y a pas encore de preuve à exporter."), None, None)
+            return
+        if self._save_text(self.latex_source(), self._name() + ".tex", _("Fichiers LaTeX (*.tex)")):
+            self.ctx.toast.emit(_("Dans Overleaf : « Nouveau projet → Téléverser », compilateur XeLaTeX."), None, None)
+
+    def copy_tex(self):
+        QGuiApplication.clipboard().setText(self.latex_source())
+        self.ctx.toast.emit(_("Code LaTeX copié : collez-le dans un fichier .tex d'Overleaf (compilateur XeLaTeX)."), None, None)
+
+    def open_overleaf(self):
+        QDesktopServices.openUrl(QUrl(self.ctx.settings.overleaf_url))

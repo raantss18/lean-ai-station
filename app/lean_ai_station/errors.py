@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from .i18n import _
+
 
 @dataclass
 class Friendly:
@@ -74,7 +76,7 @@ MESSAGES = {
         "Le traducteur français → Lean n'est pas installé",
         "Pour écrire votre problème en français, il faut le modèle « Goedel-Formalizer » (≈ 5 Go). "
         "Avec Internet : ouvrez « Modèles » → téléchargez « mradermacher/Goedel-Formalizer-V2-8B-GGUF ». "
-        "Sinon, écrivez directement l'énoncé en Lean dans la zone ②.",
+        "Sinon, écrivez directement l'énoncé en Lean dans l'onglet « Énoncé Lean ».",
         [("Ouvrir Modèles", "goto_models")], "warn"),
     "no_explainer": Friendly(
         "Le modèle d'explication n'est pas installé",
@@ -88,7 +90,9 @@ MESSAGES = {
 
 
 def friendly(kind: str, extra: str = "") -> Friendly:
+    """Messages are translated when they are shown (the interface language can change at run time)."""
     f = MESSAGES.get(kind) or Friendly("Une erreur est survenue", "Réessayez. Si le problème persiste, ouvrez « Système ».")
+    actions = [(_(label), act) for label, act in f.actions]
     if extra and not f.message:
-        return Friendly(f.title, extra, list(f.actions), f.level)
-    return Friendly(f.title, f.message, list(f.actions), f.level)
+        return Friendly(_(f.title), extra, actions, f.level)
+    return Friendly(_(f.title), _(f.message), actions, f.level)

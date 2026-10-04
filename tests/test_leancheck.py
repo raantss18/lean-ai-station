@@ -134,3 +134,28 @@ def test_normalize_formal_statement_enforces_standard_header():
     assert out.count("open BigOperators Real Nat Topology Rat") == 1 and "open Finset" in out
     assert "maxHeartbeats 400000" in out and "maxHeartbeats 0" not in out
     assert out.endswith("theorem mon_probleme : 1 = 1 := by sorry\n")
+
+
+LEMMA = "theorem lib_pair_add (a b : ℕ) (ha : Even a) (hb : Even b) : Even (a + b) := by\n  exact Even.add ha hb\n\n"
+
+
+def test_target_is_the_last_declaration():
+    st = lc.prepare_statement(LEMMA + "lemma cible (a : ℕ) (ha : Even a) : Even (a + a) := by\n  sorry")
+    assert st.count(":= by sorry") == 1 and "exact Even.add ha hb" in st
+    assert st.rstrip().endswith("theorem cible (a : ℕ) (ha : Even a) : Even (a + a) := by sorry")
+    assert lc.theorem_name(st) == "cible"
+    p = lc.initial_prompt(st)
+    assert "exact Even.add ha hb" in p and "theorem cible (a : ℕ) (ha : Even a) : Even (a + a) := by sorry```" in p
+
+
+def test_single_theorem_prompt_unchanged_by_rsplit():
+    st = lc.prepare_statement("theorem t (x : ℝ) : x = x := by sorry")
+    assert lc.initial_prompt(st) == lc.INITIAL_TEMPLATE.format(st.split(":= by")[0] + ":= by sorry")
+
+
+def test_assemble_with_library_lemma_no_duplicates():
+    st = lc.prepare_statement(LEMMA + "theorem cible (a : ℕ) (ha : Even a) : Even (a + a) := by sorry")
+    model = "import Mathlib\n" + LEMMA + "lemma aux : True := trivial\n\ntheorem cible (a : ℕ) (ha : Even a) : Even (a + a) := by\n  exact lib_pair_add a a ha ha"
+    full = lc.assemble_proof(st, model)
+    assert full.count("theorem lib_pair_add") == 1 and "lemma aux : True := trivial" in full
+    assert full.rstrip().endswith("exact lib_pair_add a a ha ha")

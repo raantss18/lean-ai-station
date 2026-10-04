@@ -5,6 +5,8 @@ import struct
 from dataclasses import dataclass
 from pathlib import Path
 
+from .i18n import _
+
 FILE_TYPES = {
     0: "F32", 1: "F16", 2: "Q4_0", 3: "Q4_1", 7: "Q8_0", 8: "Q5_0", 9: "Q5_1", 10: "Q2_K",
     11: "Q3_K_S", 12: "Q3_K_M", 13: "Q3_K_L", 14: "Q4_K_S", 15: "Q4_K_M", 16: "Q5_K_S",
@@ -48,7 +50,7 @@ class _Reader:
     def read(self, n: int) -> bytes:
         b = self.f.read(n)
         if len(b) != n:
-            raise GGUFError("fichier tronqué")
+            raise GGUFError(_("fichier tronqué"))
         return b
 
     def scalar(self, t: int):
@@ -58,7 +60,7 @@ class _Reader:
     def string(self) -> str:
         (n,) = struct.unpack("<Q", self.read(8))
         if n > 1 << 24:
-            raise GGUFError("chaîne invalide")
+            raise GGUFError(_("chaîne invalide"))
         return self.read(n).decode("utf-8", "replace")
 
     def value(self, t: int, keep: bool = True):
@@ -72,10 +74,10 @@ class _Reader:
             if et in _SCALARS:  # skip quickly
                 self.f.seek(n * struct.calcsize(_SCALARS[et]), 1)
                 return None
-            for _ in range(n):
+            for _i in range(n):
                 self.value(et, keep=False)
             return None
-        raise GGUFError(f"type inconnu {t}")
+        raise GGUFError(_("type inconnu {t}").format(t=t))
 
 
 def read_info(path: str | Path) -> GGUFInfo:
@@ -87,14 +89,14 @@ def read_info(path: str | Path) -> GGUFInfo:
     with open(path, "rb") as f:
         r = _Reader(f)
         if r.read(4) != b"GGUF":
-            raise GGUFError("ce n'est pas un fichier GGUF")
+            raise GGUFError(_("ce n'est pas un fichier GGUF"))
         (version,) = struct.unpack("<I", r.read(4))
         if version not in (2, 3):
-            raise GGUFError(f"version GGUF {version} non prise en charge")
+            raise GGUFError(_("version GGUF {v} non prise en charge").format(v=version))
         _n_tensors, n_kv = struct.unpack("<QQ", r.read(16))
         if n_kv > 100000:
-            raise GGUFError("en-tête corrompu")
-        for _ in range(n_kv):
+            raise GGUFError(_("en-tête corrompu"))
+        for _i in range(n_kv):
             key = r.string()
             (t,) = struct.unpack("<I", r.read(4))
             v = r.value(t)

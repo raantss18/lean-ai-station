@@ -20,6 +20,7 @@ from PySide6.QtCore import QByteArray, QObject, QProcess, QProcessEnvironment, Q
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkProxy, QNetworkReply, QNetworkRequest
 
 from . import config, leancheck
+from .i18n import _
 from .gguf import GGUFError, GGUFInfo, read_info
 from .workspaces import Workspace
 
@@ -87,7 +88,7 @@ def kill_orphan_server() -> bool:
     if "llama-server" in _proc_cmdline(pid):
         try:
             os.kill(pid, signal.SIGTERM)
-            for _ in range(30):
+            for _i in range(30):
                 time.sleep(0.1)
                 if not _proc_cmdline(pid):
                     break
@@ -144,7 +145,7 @@ class GpuMonitor(QObject):
         p.start(exe, ["--query-gpu=name,memory.total,memory.used,temperature.gpu,utilization.gpu",
                       "--format=csv,noheader,nounits"])
 
-    def _done(self, *_):
+    def _done(self, *_a):
         p = self._proc
         if p is None or self.sender() is not p:
             return
@@ -157,7 +158,7 @@ class GpuMonitor(QObject):
         except (ValueError, IndexError):
             self._proc = None
             self.last = None
-            self.unavailable.emit(out or "nvidia-smi n'a rien renvoyé")
+            self.unavailable.emit(out or _("nvidia-smi n'a rien renvoyé"))
             return
         # second query in the same poll: per-process VRAM (lets us ignore our own server's share)
         q = QProcess(self)
@@ -166,7 +167,7 @@ class GpuMonitor(QObject):
         q.errorOccurred.connect(self._apps_done)
         q.start(shutil.which("nvidia-smi"), ["--query-compute-apps=pid,used_memory", "--format=csv,noheader,nounits"])
 
-    def _apps_done(self, *_):
+    def _apps_done(self, *_a):
         q = self._proc
         if q is None or self.sender() is not q:
             return
@@ -213,7 +214,7 @@ def plan_launch(model: Path, s: config.ServerSettings, vram_free_mib: int | None
         ctx = min(ctx, info.ctx_train)
     if vram_free_mib is None:
         return LaunchPlan(model, info, 0, min(ctx, 8192), kv,
-                          "Aucune carte graphique NVIDIA utilisable : le modèle tourne sur le processeur (beaucoup plus lent).")
+                          _("Aucune carte graphique NVIDIA utilisable : le modèle tourne sur le processeur (beaucoup plus lent)."))
     if info is None:
         return LaunchPlan(model, None, ngl, ctx, kv)
     budget = vram_free_mib * 1024 * 1024 - 450 * 1024 * 1024    # CUDA context + compute buffers
@@ -226,14 +227,14 @@ def plan_launch(model: Path, s: config.ServerSettings, vram_free_mib: int | None
         c //= 2
     if info.size + info.kv_bytes(c, kv) + 300 * 1024 * 1024 <= budget:
         return LaunchPlan(model, info, ngl, c, kv,
-                          f"Mémoire graphique limitée : contexte réduit à {c} tokens pour que tout tienne sur la carte.")
+                          _("Mémoire graphique limitée : contexte réduit à {c} tokens pour que tout tienne sur la carte.").format(c=c))
     # 2) partial offload
     per_layer = info.size / max(info.n_layers + 1, 1)
     layers = int((budget - info.kv_bytes(c, kv) - 300 * 1024 * 1024) // per_layer)
     layers = max(0, min(info.n_layers, layers))
     return LaunchPlan(model, info, layers, c, kv,
-                      f"Le modèle est trop gros pour la carte graphique : {layers}/{info.n_layers} couches sur la carte, "
-                      "le reste sur le processeur (plus lent). Un modèle plus petit (Q4_K_M) serait plus rapide.")
+                      _("Le modèle est trop gros pour la carte graphique : {l}/{n} couches sur la carte, le reste sur le "
+                        "processeur (plus lent). Un modèle plus petit (Q4_K_M) serait plus rapide.").format(l=layers, n=info.n_layers))
 
 
 class LlamaServer(QObject):
@@ -307,11 +308,11 @@ class LlamaServer(QObject):
         if not port_free(port):
             for p in range(port + 1, port + 50):
                 if port_free(p):
-                    self.notice.emit(f"Le port {port} est déjà utilisé : le serveur utilise le port {p}.")
+                    self.notice.emit(_("Le port {port} est déjà utilisé : le serveur utilise le port {p}.").format(port=port, p=p))
                     port = p
                     break
             else:
-                self.failed.emit("port", f"Aucun port libre à partir de {port}")
+                self.failed.emit("port", _("Aucun port libre à partir de {port}").format(port=port))
                 return
         self.port, self.plan = port, plan
         if plan.note:
@@ -408,7 +409,7 @@ class LlamaServer(QObject):
             return
         if time.monotonic() - self._t0 > 300:
             self._health.stop()
-            self.failed.emit("timeout", "Le serveur ne répond pas après 5 minutes.\n" + "\n".join(self._tail[-15:]))
+            self.failed.emit("timeout", _("Le serveur ne répond pas après 5 minutes.") + "\n" + "\n".join(self._tail[-15:]))
             self.stop()
             return
         r = self._nam.get(QNetworkRequest(QUrl(self.url + "/health")))
@@ -468,12 +469,12 @@ class LlamaServer(QObject):
             pl = self.plan
             if pl.ctx > 8192:
                 new = LaunchPlan(pl.model, pl.info, pl.gpu_layers, max(8192, pl.ctx // 2), pl.kv_type,
-                                 f"Mémoire graphique insuffisante : nouvel essai avec un contexte de {max(8192, pl.ctx // 2)} tokens.")
+                                 _("Mémoire graphique insuffisante : nouvel essai avec un contexte de {n} tokens.").format(n=max(8192, pl.ctx // 2)))
             else:
                 n = pl.info.n_layers if pl.info else 36
                 cur = min(pl.gpu_layers, n)
                 new = LaunchPlan(pl.model, pl.info, max(0, int(cur * 0.7)), pl.ctx, pl.kv_type,
-                                 f"Mémoire graphique insuffisante : nouvel essai avec {max(0, int(cur * 0.7))} couches sur la carte.")
+                                 _("Mémoire graphique insuffisante : nouvel essai avec {n} couches sur la carte.").format(n=max(0, int(cur * 0.7))))
             self._launch(new)
             return
         if self._oom:
@@ -612,7 +613,7 @@ class ChatStream(QObject):
             self.error.emit("cancelled", "")
             return
         if getattr(self, "_stalled", False):
-            self.error.emit("stalled", f"Aucune donnée reçue depuis {self.stall_s} s.")
+            self.error.emit("stalled", _("Aucune donnée reçue depuis {s} s.").format(s=self.stall_s))
             return
         if status and int(status) >= 400:
             try:
@@ -642,6 +643,7 @@ class CompileResult:
     timed_out: bool = False
     cancelled: bool = False
     infra_error: str = ""      # non-empty: compile could not run (workspace broken...)
+    job: int = 0               # id returned by LeanCompiler.compile(); stale results are ignored by callers
 
 
 class LeanCompiler(QObject):
@@ -654,18 +656,30 @@ class LeanCompiler(QObject):
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._timeout)
         self._state: dict = {}
+        self._seq = 0
+        self._queued: tuple | None = None
 
     @property
     def busy(self) -> bool:
         return self.proc is not None
 
-    def compile(self, code: str, ws: Workspace, timeout_s: int, strict_name: str | None):
+    def compile(self, code: str, ws: Workspace, timeout_s: int, strict_name: str | None) -> int:
+        """Start a check; returns its job id (carried by the CompileResult)."""
+        self._seq += 1
+        job = self._seq
         if self.proc is not None:
+            if self._state.get("cancelled") or self._state.get("timed_out"):
+                self._queued = (job, code, ws, timeout_s, strict_name)   # previous one is being killed: start right after
+                return job
             raise RuntimeError("compile already running")
+        self._start(job, code, ws, timeout_s, strict_name)
+        return job
+
+    def _start(self, job: int, code: str, ws: Workspace, timeout_s: int, strict_name: str | None):
         problems = ws.check()
         if problems:
             v = leancheck.Verdict(False, problems[0])
-            QTimer.singleShot(0, self, lambda: self.finished.emit(CompileResult(v, code, 0.0, "", infra_error=problems[0])))
+            QTimer.singleShot(0, self, lambda: self.finished.emit(CompileResult(v, code, 0.0, "", infra_error=problems[0], job=job)))
             return
         tmpdir = config.CACHE_DIR / "tmp"
         tmpdir.mkdir(parents=True, exist_ok=True)
@@ -681,12 +695,13 @@ class LeanCompiler(QObject):
         p.errorOccurred.connect(self._err)
         self.proc = p
         self._state = {"code": code, "file": f, "name": strict_name, "t0": time.monotonic(),
-                       "timed_out": False, "cancelled": False}
+                       "timed_out": False, "cancelled": False, "job": job}
         prog, args = guarded(str(ws.lean_bin), ["--json", str(f)])
         p.start(prog, args)
         self._timer.start(max(5, timeout_s) * 1000)
 
     def cancel(self):
+        self._queued = None
         if self.proc is not None:
             self._state["cancelled"] = True
             self.proc.kill()
@@ -719,26 +734,32 @@ class LeanCompiler(QObject):
             pass
         secs = time.monotonic() - st["t0"]
         if failed_start:
-            v = leancheck.Verdict(False, "Lean n'a pas pu démarrer.")
-            self.finished.emit(CompileResult(v, st["code"], secs, err, infra_error=failed_start))
+            v = leancheck.Verdict(False, _("Lean n'a pas pu démarrer."))
+            self._emit(CompileResult(v, st["code"], secs, err, infra_error=failed_start, job=st["job"]))
             return
         if st["cancelled"]:
-            self.finished.emit(CompileResult(leancheck.Verdict(False, "Vérification annulée."), st["code"], secs, out, cancelled=True))
+            self._emit(CompileResult(leancheck.Verdict(False, _("Vérification annulée.")), st["code"], secs, out, cancelled=True, job=st["job"]))
             return
         if st["timed_out"]:
-            v = leancheck.Verdict(False, f"Lean a dépassé le délai ({int(secs)} s).",
+            v = leancheck.Verdict(False, _("Lean a dépassé le délai ({s} s).").format(s=int(secs)),
                                   feedback_en="Compilation timed out. Use simpler, faster tactics (avoid heavy nlinarith/simp searches).")
-            self.finished.emit(CompileResult(v, st["code"], secs, out, timed_out=True))
+            self._emit(CompileResult(v, st["code"], secs, out, timed_out=True, job=st["job"]))
             return
         msgs = leancheck.parse_lean_json(out)
         infra = ""
         if any("object file" in m.text and "does not exist" in m.text for m in msgs) or (
                 "unknown package" in out and "Mathlib" in out):
-            infra = "Mathlib introuvable ou non compilé dans cet espace."
+            infra = _("Mathlib introuvable ou non compilé dans cet espace.")
         if not msgs and code != 0:
             infra = (err or out).strip()[-2000:] or f"code de sortie {code}"
         v = leancheck.judge(st["code"], msgs, st["name"], code)
-        self.finished.emit(CompileResult(v, st["code"], secs, out + err, infra_error=infra))
+        self._emit(CompileResult(v, st["code"], secs, out + err, infra_error=infra, job=st["job"]))
+
+    def _emit(self, res: CompileResult):
+        self.finished.emit(res)
+        if self._queued and self.proc is None:
+            q, self._queued = self._queued, None
+            self._start(*q)
 
 
 # ---------------------------------------------------------------- prove loop
@@ -777,35 +798,45 @@ class Prover(QObject):
         self._mine = False
 
     def start(self, statement: str, ws: Workspace, n_attempts: int, sampling: config.SamplingSettings,
-              timeout_s: int, ctx: int):
+              timeout_s: int, ctx: int, refine: tuple[str, str] | None = None):
+        """refine=(verified_proof, user_request): produce a new proof of the same statement following the request."""
         self.statement = leancheck.prepare_statement(statement)
         self.name = leancheck.theorem_name(self.statement)
         self.ws, self.n, self.sampling, self.timeout_s, self.ctx = ws, max(1, n_attempts), sampling, timeout_s, ctx
-        self.attempts, self.final_code, self.running = [], "", True
-        self.messages = [{"role": "user", "content": leancheck.initial_prompt(self.statement)}]
+        self.attempts, self.final_code, self.running, self.was_cancelled = [], "", True, False
+        if refine:
+            self._base = leancheck.refine_messages(self.statement, *refine)
+        else:
+            self._base = [{"role": "user", "content": leancheck.initial_prompt(self.statement)}]
+        self.messages = list(self._base)
         self._next()
 
     def cancel(self):
         if not self.running:
             return
         self.running = False
+        self.was_cancelled = True
+        self._gid = getattr(self, "_gid", 0) + 1
         if self._stream:
             self._stream.cancel()
+            self._stream = None
         if self._mine and self.compiler.busy:
             self.compiler.cancel()
+        self._mine = False
         if self.attempts and self.attempts[-1].status in ("génération", "compilation"):
             self.attempts[-1].status = "annulé"
             self.attemptUpdated.emit(len(self.attempts) - 1)
-        self.finished.emit(False, "Recherche de preuve arrêtée.")
+        self.finished.emit(False, _("Recherche de preuve arrêtée."))
 
     def _fit_messages(self) -> int:
         budget = self.ctx - 256
         def est(ms):
             return int(sum(len(m["content"]) for m in ms) / 3.0) + 50
-        while est(self.messages) > budget - 2048 and len(self.messages) > 3:
-            del self.messages[1:3]   # drop oldest assistant/user pair, keep the original task
+        nb = len(self._base)
+        while est(self.messages) > budget - 2048 and len(self.messages) > nb + 2:
+            del self.messages[nb:nb + 2]   # drop oldest assistant/user pair, keep the original task
         if est(self.messages) > budget - 2048:
-            self.messages = self.messages[:1]
+            self.messages = list(self._base)
         return max(512, min(self.sampling.max_tokens, budget - est(self.messages)))
 
     def _next(self):
@@ -813,13 +844,14 @@ class Prover(QObject):
             return
         if len(self.attempts) >= self.n:
             self.running = False
-            self.finished.emit(False, f"Aucune preuve trouvée après {self.n} essais.")
+            self.finished.emit(False, _("Aucune preuve trouvée après {n} essais.").format(n=self.n))
             return
         if self.server.state != LlamaServer.READY:
             self.running = False
             self.infraError.emit("server_down", "")
             return
-        kind = "initial" if len(self.messages) == 1 else "correction"
+        kind = ("correction" if len(self.messages) > len(self._base) else
+                "refinement" if len(self._base) > 1 else "initial")
         a = Attempt(len(self.attempts), kind)
         self.attempts.append(a)
         if getattr(self, "_retry_same", False):
@@ -830,9 +862,11 @@ class Prover(QObject):
         max_tokens = self._fit_messages()
         s = ChatStream(self.server.url, self)
         self._stream = s
-        s.delta.connect(lambda t, i=a.index: self._delta(i, t))
-        s.done.connect(lambda d, i=a.index: self._generated(i, d))
-        s.error.connect(lambda k, det, i=a.index: self._gen_error(i, k, det))
+        self._gid = getattr(self, "_gid", 0) + 1
+        g = self._gid          # signals of an older (cancelled) stream are ignored
+        s.delta.connect(lambda t, i=a.index, g=g: g == self._gid and self._delta(i, t))
+        s.done.connect(lambda d, i=a.index, g=g: g == self._gid and self._generated(i, d))
+        s.error.connect(lambda k, det, i=a.index, g=g: g == self._gid and self._gen_error(i, k, det))
         s.start(list(self.messages), self.sampling.temperature, self.sampling.top_p, max_tokens)
 
     def _delta(self, i: int, t: str):
@@ -845,14 +879,16 @@ class Prover(QObject):
             return
         a = self.attempts[i]
         a.errors_text = det
-        if kind == "http" and ("context" in det.lower() or "exceed" in det.lower()) and len(self.messages) > 1:
+        if kind == "http" and ("context" in det.lower() or "exceed" in det.lower()) and len(self.messages) > len(self._base):
             # prompt too long for the context window: shorten the history and retry this same attempt
-            self.messages = self.messages[:1] if len(self.messages) <= 3 else self.messages[:1] + self.messages[3:]
+            nb = len(self._base)
+            self.messages = (list(self._base) if len(self.messages) <= nb + 2
+                             else list(self._base) + self.messages[nb + 2:])
             self.attempts.pop()
             self._retry_same = True
             QTimer.singleShot(0, self._next)
             return
-        a.status, a.summary = "erreur", "La génération a échoué."
+        a.status, a.summary = "erreur", _("La génération a échoué.")
         self.attemptUpdated.emit(i)
         self.running = False
         self.infraError.emit("server_down" if kind in ("unreachable", "stalled") else "generation", det)
@@ -866,17 +902,17 @@ class Prover(QObject):
         a.gen_seconds, a.tokens, a.tps, a.ttft, a.finish_reason = d["seconds"], d["tokens"], d["tps"], d["ttft"], d["finish_reason"]
         code = leancheck.extract_code(a.raw)
         if d.get("loop"):
-            a.status, a.summary = "refusé", "L'IA tournait en rond : essai interrompu, nouvel essai."
+            a.status, a.summary = "refusé", _("L'IA tournait en rond : essai interrompu, nouvel essai.")
             self.attemptUpdated.emit(i)
-            self.messages = self.messages[:1]
+            self.messages = list(self._base)
             QTimer.singleShot(0, self._next)
             return
         if code is None:
             a.status = "refusé"
-            a.summary = ("Réponse trop longue, coupée avant le code Lean." if a.finish_reason == "length"
-                         else "Le modèle n'a pas produit de code Lean.")
+            a.summary = (_("Réponse trop longue, coupée avant le code Lean.") if a.finish_reason == "length"
+                         else _("Le modèle n'a pas produit de code Lean."))
             self.attemptUpdated.emit(i)
-            self.messages = self.messages[:1]   # start over
+            self.messages = list(self._base)   # start over
             QTimer.singleShot(0, self._next)
             return
         try:
@@ -884,16 +920,16 @@ class Prover(QObject):
         except leancheck.StatementError as e:
             a.status, a.summary = "refusé", str(e)
             self.attemptUpdated.emit(i)
-            self.messages = self.messages[:1]
+            self.messages = list(self._base)
             QTimer.singleShot(0, self._next)
             return
         a.status = "compilation"
         self.attemptUpdated.emit(i)
         self._mine = True
-        self.compiler.compile(leancheck.with_axiom_probe(a.code, self.name), self.ws, self.timeout_s, self.name)
+        self._job = self.compiler.compile(leancheck.with_axiom_probe(a.code, self.name), self.ws, self.timeout_s, self.name)
 
     def _compiled(self, res: CompileResult):
-        if not self._mine:
+        if not self._mine or res.job != getattr(self, "_job", None):
             return
         self._mine = False
         if not self.running or not self.attempts:
@@ -913,7 +949,7 @@ class Prover(QObject):
             self.final_code = a.code
             self.attemptUpdated.emit(i)
             self.running = False
-            self.finished.emit(True, f"Preuve trouvée et vérifiée par Lean (essai {i + 1}).")
+            self.finished.emit(True, _("Preuve trouvée et vérifiée par Lean (essai {i}).").format(i=i + 1))
             return
         a.status = "refusé"
         feedback = leancheck.errors_for_feedback(res.code, res.verdict)
@@ -950,8 +986,12 @@ class Formalizer(QObject):
         self._mine = False
         compiler.finished.connect(self._compiled)
 
-    def start(self, text: str, ws: Workspace, tries: int, timeout_s: int):
-        self.text, self.ws, self.n, self.timeout_s = text.strip(), ws, max(1, tries), timeout_s
+    def start(self, text: str, ws: Workspace, tries: int, timeout_s: int, name: str = leancheck.DEFAULT_THEOREM_NAME,
+              profile: str = "", previous: str = "", request: str = ""):
+        """`previous` + `request`: correct an earlier statement following the user's request."""
+        self.text = leancheck.formalize_input(text, profile, previous, request)
+        self.name, self.ws, self.n, self.timeout_s = name, ws, max(1, tries), timeout_s
+        self.was_cancelled = False
         self.attempts, self.statement, self.errors, self.running = [], "", [], True
         self._next()
 
@@ -961,20 +1001,23 @@ class Formalizer(QObject):
         self.running = False
         if self._stream:
             self._stream.cancel()
+            self._stream = None
         if self._mine and self.compiler.busy:
             self.compiler.cancel()
+        self._mine = False
         if self.attempts and self.attempts[-1].status in ("génération", "compilation"):
             self.attempts[-1].status = "annulé"
             self.attemptUpdated.emit(len(self.attempts) - 1)
-        self.finished.emit(False, "Traduction arrêtée.")
+        self.was_cancelled = True
+        self.finished.emit(False, _("Traduction arrêtée."))
 
     def _next(self):
         if not self.running:
             return
         if len(self.attempts) >= self.n:
             self.running = False
-            self.finished.emit(False, "La traduction ne compile pas encore : corrigez-la dans l'éditeur "
-                                      "ou reformulez le problème.")
+            self.finished.emit(False, _("La traduction ne compile pas encore : corrigez-la dans l'éditeur "
+                                        "ou reformulez le problème."))
             return
         if self.server.state != LlamaServer.READY:
             self.running = False
@@ -988,25 +1031,31 @@ class Formalizer(QObject):
         s.delta.connect(self._delta)
         s.done.connect(self._generated)
         s.error.connect(self._gen_error)
-        s.start([{"role": "user", "content": leancheck.formalize_prompt(self.text)}], 0.9, 0.95, 12000,
+        s.start([{"role": "user", "content": leancheck.formalize_prompt(self.text, self.name)}], 0.9, 0.95, 12000,
                 extra={"top_k": 20})        # sampling from the Goedel-Formalizer-V2 model card
 
     def _delta(self, t: str):
+        if self.sender() is not self._stream:
+            return
         if self.attempts:
             self.attempts[-1].raw += t
             self.token.emit(len(self.attempts) - 1, t)
 
     def _gen_error(self, kind: str, det: str):
+        if self.sender() is not self._stream:
+            return
         self._stream = None
         if kind == "cancelled" or not self.running:
             return
         a = self.attempts[-1]
-        a.status, a.summary = "erreur", "La traduction a échoué."
+        a.status, a.summary = "erreur", _("La traduction a échoué.")
         self.attemptUpdated.emit(a.index)
         self.running = False
         self.infraError.emit("server_down" if kind in ("unreachable", "stalled") else "generation", det)
 
     def _generated(self, d: dict):
+        if self.sender() is not self._stream:
+            return
         self._stream = None
         if not self.running:
             return
@@ -1017,8 +1066,8 @@ class Formalizer(QObject):
         code = None if d.get("loop") else leancheck.extract_code(a.raw)
         if code is None:
             a.status = "refusé"
-            a.summary = ("L'IA tournait en rond : nouvel essai." if d.get("loop") else
-                         "Pas d'énoncé Lean dans la réponse : nouvel essai.")
+            a.summary = (_("L'IA tournait en rond : nouvel essai.") if d.get("loop") else
+                         _("Pas d'énoncé Lean dans la réponse : nouvel essai."))
             self.attemptUpdated.emit(i)
             QTimer.singleShot(0, self._next)
             return
@@ -1033,10 +1082,10 @@ class Formalizer(QObject):
         a.status = "compilation"
         self.attemptUpdated.emit(i)
         self._mine = True
-        self.compiler.compile(a.code, self.ws, self.timeout_s, None)
+        self._job = self.compiler.compile(a.code, self.ws, self.timeout_s, None)
 
     def _compiled(self, res: CompileResult):
-        if not self._mine:
+        if not self._mine or res.job != getattr(self, "_job", None):
             return
         self._mine = False
         if not self.running or not self.attempts:
@@ -1052,10 +1101,10 @@ class Formalizer(QObject):
             return
         self.errors = res.verdict.errors
         if not res.verdict.errors and not res.timed_out:
-            a.status, a.summary = "accepté", "Énoncé valide en Lean (à relire)"
+            a.status, a.summary = "accepté", _("Énoncé valide en Lean (à relire)")
             self.attemptUpdated.emit(i)
             self.running = False
-            self.finished.emit(True, "Énoncé traduit : Lean le comprend. Relisez-le avant de prouver.")
+            self.finished.emit(True, _("Énoncé traduit : Lean le comprend. Relisez-le avant de prouver."))
             return
         a.status = "refusé"
         a.summary = "Lean refuse cette traduction : nouvel essai." if i + 1 < self.n else "Lean refuse cette traduction."
@@ -1080,7 +1129,8 @@ class Explainer(QObject):
         self.running = False
         self._stream: ChatStream | None = None
 
-    def start(self, lean_code: str, nl_statement: str = ""):
+    def start(self, lean_code: str, nl_statement: str = "", lang: str = "fr", profile: str = "",
+              previous: str = "", request: str = ""):
         if self.server.state != LlamaServer.READY:
             self.infraError.emit("server_down", "")
             return
@@ -1090,7 +1140,7 @@ class Explainer(QObject):
         s.delta.connect(self.token)
         s.done.connect(self._done)
         s.error.connect(self._error)
-        s.start([{"role": "user", "content": leancheck.explain_prompt(lean_code, nl_statement)}], 0.5, 0.9, 2000,
+        s.start(leancheck.explain_messages(lean_code, nl_statement, lang, profile, previous, request), 0.5, 0.9, 2000,
                 extra={"chat_template_kwargs": {"enable_thinking": False}, "repeat_penalty": 1.05})
 
     def cancel(self):
@@ -1098,20 +1148,24 @@ class Explainer(QObject):
             self._stream.cancel()
 
     def _done(self, d: dict):
+        if self.sender() is not self._stream:
+            return
         self.running = False
         self._stream = None
         text = leancheck.clean_model_text(d["text"])
         if not text:
-            self.finished.emit(False, "", "L'IA n'a rien écrit : réessayez.")
+            self.finished.emit(False, "", _("L'IA n'a rien écrit : réessayez."))
             return
-        note = " (réponse interrompue : l'IA tournait en rond)" if d.get("loop") else ""
-        self.finished.emit(True, text, f"Explication prête{note}.")
+        self.finished.emit(True, text, _("Explication prête (réponse interrompue : l'IA tournait en rond).")
+                           if d.get("loop") else _("Explication prête."))
 
     def _error(self, kind: str, det: str):
+        if self.sender() is not self._stream:
+            return
         was = self.running
         self.running = False
         self._stream = None
         if kind == "cancelled":
-            self.finished.emit(False, "", "Explication arrêtée.")
+            self.finished.emit(False, "", _("Explication arrêtée."))
         elif was:
             self.infraError.emit("server_down" if kind in ("unreachable", "stalled") else "generation", det)

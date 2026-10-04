@@ -7,6 +7,8 @@ import json
 import re
 from dataclasses import dataclass, field
 
+from .i18n import _
+
 GOEDEL_HEADER = "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 400000\n\nopen BigOperators Real Nat Topology Rat\n\n"
 ALLOWED_AXIOMS = {"propext", "Classical.choice", "Quot.sound"}
 # Tokens that are never acceptable in a submitted proof (checked on comment-free text).
@@ -49,35 +51,46 @@ def prepare_statement(source: str) -> str:
     Accepts `theorem`, `lemma` or `example`; adds the Goedel header if there is no import."""
     src = source.replace("\r\n", "\n").strip()
     if not src:
-        raise StatementError("L'éditeur est vide : écrivez un énoncé ou choisissez un exemple.")
+        raise StatementError(_("L'éditeur est vide : écrivez un énoncé ou choisissez un exemple."))
     if not re.search(r"(?m)^\s*import\s", src):
         src = GOEDEL_HEADER + src
+    # the target is the LAST declaration: lemmas (e.g. from the library, with their proofs) may precede it.
     # lemma/example -> theorem (same meaning; Goedel's pipeline matches `theorem`)
-    m = re.search(r"(?m)^(\s*(?:@\[[^\]]*\]\s*)?(?:private\s+|protected\s+)?)(theorem|lemma|example)\b", src)
-    if not m:
-        raise StatementError("Aucun « theorem », « lemma » ou « example » trouvé dans l'éditeur.")
+    decls = list(re.finditer(r"(?m)^(\s*(?:@\[[^\]]*\]\s*)?(?:private\s+|protected\s+)?)(theorem|lemma|example)\b", src))
+    if not decls:
+        raise StatementError(_("Aucun « theorem », « lemma » ou « example » trouvé dans l'éditeur."))
+    m = decls[-1]
     kw = m.group(2)
     if kw == "lemma":
         src = src[: m.start(2)] + "theorem" + src[m.end(2):]
     elif kw == "example":
         src = src[: m.start(2)] + "theorem exercice" + src[m.end(2):]
-    head, sep, _rest = src.partition(":= by")
+    before, target = src[: m.start(2)], src[m.start(2):]
+    head, sep, _rest = target.partition(":= by")
     if not sep:
-        head, sep, _rest = src.partition(":=")
+        head, sep, _rest = target.partition(":=")
         if not sep:
-            raise StatementError("L'énoncé doit se terminer par « := by sorry ».")
-    return head.rstrip() + " := by sorry\n"
+            raise StatementError(_("L'énoncé doit se terminer par « := by sorry »."))
+    return before + head.rstrip() + " := by sorry\n"
 
 
 def theorem_name(statement: str) -> str:
-    m = re.search(r"\btheorem\s+([^\s:({\[⦃]+)", remove_comments(statement))
-    if not m:
-        raise StatementError("Impossible de trouver le nom du théorème.")
-    return m.group(1)
+    """Name of the target (= last) theorem."""
+    names = re.findall(r"\btheorem\s+([^\s:({\[⦃]+)", remove_comments(statement))
+    if not names:
+        raise StatementError(_("Impossible de trouver le nom du théorème."))
+    return names[-1]
+
+
+def declared_names(code: str) -> set[str]:
+    return set(re.findall(r"(?m)^\s*(?:noncomputable\s+)?(?:theorem|lemma|def|abbrev)\s+([^\s:({\[⦃]+)",
+                          remove_comments(code)))
 
 
 def initial_prompt(statement: str) -> str:
-    formal = statement.split(":= by")[0] + ":= by sorry"
+    # Goedel: statement.split(":= by")[0] + ":= by sorry"; rsplit = same text for a single theorem, and keeps the
+    # complete preceding lemmas when library results are placed above the target theorem.
+    formal = statement.rsplit(":= by", 1)[0] + ":= by sorry"
     return INITIAL_TEMPLATE.format(formal)
 
 
@@ -99,17 +112,18 @@ def assemble_proof(statement: str, model_code: str) -> str:
     """Pin the user's statement: keep its header + theorem signature, take only what follows the
     model's `theorem ... := by`, plus auxiliary lemmas the model declared before the theorem."""
     stmt = remove_comments(statement)
-    m_stmt = re.search(r"(?:^|\s)theorem\s.*?:=\s*by\s*sorry", stmt, re.DOTALL)
-    if not m_stmt:
-        raise StatementError("Énoncé mal formé (il faut « theorem … := by sorry »).")
-    stmt_theorem_start = m_stmt.start() if stmt[m_stmt.start()] not in " \n\t" else m_stmt.start() + 1
-    prefix, signature = stmt[:stmt_theorem_start], stmt[stmt_theorem_start: m_stmt.end()]
+    starts = [mm.start(1) for mm in re.finditer(r"(?:^|\s)(theorem)\s", stmt)]
+    tail = stmt[starts[-1]:] if starts else ""
+    m_sig = re.match(r"theorem\s.*?:=\s*by\s*sorry", tail, re.DOTALL)
+    if not m_sig:
+        raise StatementError(_("Énoncé mal formé (il faut « theorem … := by sorry »)."))
+    prefix, signature = stmt[: starts[-1]], tail[: m_sig.end()]
     signature = signature[: signature.rfind("sorry")]
 
     code = remove_comments(model_code)
     m_code = re.search(r"(?:^|\s)theorem\s+.*?:=\s*by", code, re.DOTALL)
     if not m_code:
-        raise StatementError("La réponse du modèle ne contient pas de « theorem … := by ».")
+        raise StatementError(_("La réponse du modèle ne contient pas de « theorem … := by »."))
     name = theorem_name(statement)
     # find the model's theorem with the same name if present (helpers may also be theorems)
     for mm in re.finditer(r"(?:^|\s)theorem\s+([^\s:({\[⦃]+).*?:=\s*by", code, re.DOTALL):
@@ -122,6 +136,11 @@ def assemble_proof(statement: str, model_code: str) -> str:
         line for line in before.split("\n")
         if not re.match(r"\s*(import|set_option|open)\b", line)
     ).strip()
+    # drop helper declarations already present in the statement (library lemmas the model copied back)
+    known = declared_names(prefix)
+    if helpers and known:
+        blocks = re.split(r"(?m)^(?=(?:noncomputable\s+)?(?:theorem|lemma|def|abbrev)\s)", helpers)
+        helpers = "\n".join(b.rstrip() for b in blocks if b.strip() and not (declared_names(b) & known)).strip()
     parts = [prefix.rstrip(), helpers, signature.rstrip() + body]
     return "\n\n".join(p for p in parts if p).rstrip() + "\n"
 
@@ -251,26 +270,27 @@ def judge(code: str, messages: list[LeanMessage], name: str | None, returncode: 
                 axioms = []
     if errors:
         n = len(errors)
-        return Verdict(False, f"Lean a trouvé {n} erreur{'s' if n > 1 else ''}.", errors, reasons, axioms, sorry)
+        msg = _("Lean a trouvé 1 erreur.") if n == 1 else _("Lean a trouvé {n} erreurs.").format(n=n)
+        return Verdict(False, msg, errors, reasons, axioms, sorry)
     if returncode not in (0, None) and not errors:
-        return Verdict(False, "Lean s'est arrêté anormalement.", errors, reasons, axioms, sorry)
+        return Verdict(False, _("Lean s'est arrêté anormalement."), errors, reasons, axioms, sorry)
     if sorry:
-        return Verdict(False, "Refusé : la preuve contient « sorry ».", errors, reasons or ["« sorry »"], axioms, True,
+        return Verdict(False, _("Refusé : la preuve contient « sorry »."), errors, reasons or ["« sorry »"], axioms, True,
                        "The proof uses `sorry`, which is not allowed. Give a complete proof.")
     if reasons:
-        return Verdict(False, "Refusé : " + ", ".join(reasons) + ".", errors, reasons, axioms, sorry,
+        return Verdict(False, _("Refusé : {why}.").format(why=", ".join(_(r) for r in reasons)), errors, reasons, axioms, sorry,
                        "The proof uses forbidden constructs (sorry/admit/axiom/apply?/exact?/#exit/meta-programming). "
                        "Give a complete proof without them.")
     if name:
         if axioms is None:
-            return Verdict(False, "Refusé : impossible de contrôler les axiomes utilisés.", errors, reasons, axioms, sorry,
+            return Verdict(False, _("Refusé : impossible de contrôler les axiomes utilisés."), errors, reasons, axioms, sorry,
                            "The file did not finish elaborating the theorem. Give a complete, self-contained proof.")
         bad = [a for a in axioms if a not in ALLOWED_AXIOMS]
         if bad:
-            return Verdict(False, "Refusé : axiomes non standard (" + ", ".join(bad) + ").", errors, reasons, axioms, sorry,
+            return Verdict(False, _("Refusé : axiomes non standard ({ax}).").format(ax=", ".join(bad)), errors, reasons, axioms, sorry,
                            f"The proof depends on non-standard axioms ({', '.join(bad)}). Avoid native_decide and sorry.")
-        return Verdict(True, "Preuve acceptée par Lean ✔", errors, reasons, axioms, sorry)
-    return Verdict(True, "Lean accepte le fichier ✔", errors, reasons, axioms, sorry)
+        return Verdict(True, _("Preuve acceptée par Lean ✔"), errors, reasons, axioms, sorry)
+    return Verdict(True, _("Lean accepte le fichier ✔"), errors, reasons, axioms, sorry)
 
 
 def errors_for_feedback(code: str, verdict: Verdict) -> str:
@@ -325,27 +345,86 @@ def detect_loop(text: str, min_chars: int = 600, min_reps: int = 5, max_unit: in
 
 
 # ---------------------------------------------------------------- Lean proof -> plain-language explanation (general model)
-EXPLAIN_PROMPT = (
-    "Tu es un professeur de mathématiques. Voici un théorème écrit en Lean 4, avec une preuve que Lean a vérifiée.\n"
-    "Explique-le EN FRANÇAIS à un lecteur qui connaît les mathématiques mais ne connaît pas Lean :\n"
-    "1. énonce d'abord le théorème en langage mathématique courant ;\n"
-    "2. donne l'idée de la preuve en une ou deux phrases ;\n"
-    "3. commente ensuite les étapes dans l'ordre, sous forme de liste numérotée, en disant ce que fait chaque "
-    "tactique en termes mathématiques (par exemple « omega : calcul sur les entiers », « rcases : on extrait un témoin »).\n"
-    "Règles : réponds uniquement en français ; paragraphes simples ; formules en LaTeX entre $...$ ; "
-    "ne recopie pas le code Lean ; n'invente aucune étape qui n'est pas dans la preuve.\n"
-    "{nl}"
-    "\n```lean4\n{code}\n```"
+EXPLAIN_PROMPTS = {
+    "fr": (
+        "Tu es un professeur de mathématiques. Voici un théorème écrit en Lean 4, avec une preuve que Lean a vérifiée.\n"
+        "Explique-le EN FRANÇAIS à un lecteur qui connaît les mathématiques mais ne connaît pas Lean :\n"
+        "1. énonce d'abord le théorème en langage mathématique courant ;\n"
+        "2. donne l'idée de la preuve en une ou deux phrases ;\n"
+        "3. commente ensuite les étapes dans l'ordre, sous forme de liste numérotée, en disant ce que fait chaque "
+        "tactique en termes mathématiques (par exemple « omega : calcul sur les entiers », « rcases : on extrait un témoin »).\n"
+        "Règles : réponds uniquement en français ; paragraphes simples ; formules en LaTeX entre $...$ ; "
+        "ne recopie pas le code Lean ; n'invente aucune étape qui n'est pas dans la preuve.\n"
+        "{profile}{nl}"
+        "\n```lean4\n{code}\n```"),
+    "en": (
+        "You are a mathematics teacher. Here is a theorem written in Lean 4, with a proof that Lean has verified.\n"
+        "Explain it IN ENGLISH to a reader who knows mathematics but does not know Lean:\n"
+        "1. first state the theorem in ordinary mathematical language;\n"
+        "2. give the idea of the proof in one or two sentences;\n"
+        "3. then go through the steps in order, as a numbered list, saying what each tactic does in mathematical terms "
+        "(for example « omega: arithmetic on integers », « rcases: we extract a witness »).\n"
+        "Rules: answer in English only; plain paragraphs; formulas in LaTeX between $...$; do not copy the Lean code; "
+        "do not invent any step that is not in the proof.\n"
+        "{profile}{nl}"
+        "\n```lean4\n{code}\n```"),
+}
+EXPLAIN_PROMPT = EXPLAIN_PROMPTS["fr"]
+
+
+def _body(lean_code: str) -> str:
+    code = lean_code.strip()
+    k = code.find("theorem")
+    return code[k:] if k > 0 else code       # skip the import/open header: noise for the explanation
+
+
+def explain_prompt(lean_code: str, nl_statement: str = "", lang: str = "fr", profile: str = "") -> str:
+    fr = lang != "en"
+    nl = ((f"\nÉnoncé d'origine, en langage naturel : {nl_statement.strip()}\n" if fr else
+           f"\nOriginal statement, in natural language: {nl_statement.strip()}\n") if nl_statement.strip() else "")
+    prof = ((f"Adapte-toi à ce lecteur : {profile.strip()}\n" if fr else f"Adapt to this reader: {profile.strip()}\n")
+            if profile.strip() else "")
+    return EXPLAIN_PROMPTS["fr" if fr else "en"].format(nl=nl, code=_body(lean_code), profile=prof)
+
+
+def explain_messages(lean_code: str, nl_statement: str = "", lang: str = "fr", profile: str = "",
+                     previous: str = "", request: str = "") -> list[dict]:
+    """Conversation for the explanation model; a follow-up request continues from the previous explanation."""
+    msgs = [{"role": "user", "content": explain_prompt(lean_code, nl_statement, lang, profile)}]
+    if previous and request:
+        follow = ("Réécris l'explication en tenant compte de cette demande, toujours en français : " if lang != "en" else
+                  "Rewrite the explanation taking this request into account, still in English: ")
+        msgs += [{"role": "assistant", "content": previous}, {"role": "user", "content": follow + request.strip()}]
+    return msgs
+
+
+def formalize_input(problem: str, profile: str = "", previous: str = "", request: str = "") -> str:
+    """The « natural language statement » given to Goedel-Formalizer (whose prompt template stays verbatim)."""
+    text = problem.strip()
+    if profile.strip():
+        text += f"\n\nConventions to respect (from the user): {profile.strip()}"
+    if previous.strip() and request.strip():
+        text += (f"\n\nA previous formalization was:\n```lean4\n{_body(previous)}\n```\n"
+                 f"The user asks for this change: {request.strip()}\n"
+                 "Give the corrected Lean 4 statement (same theorem name).\n")
+    elif request.strip():
+        text += f"\n\nAdditional instruction from the user: {request.strip()}\n"
+    return text
+
+
+REFINE_PROOF = (
+    "The proof above is correct and verified by Lean. The user now asks: {request}\n"
+    "Write a new complete Lean 4 proof of exactly the same theorem that satisfies this request.\n\n"
+    "Before producing the Lean 4 code to formally prove the given theorem, provide a detailed proof plan outlining "
+    "the main proof steps and strategies."
 )
 
 
-def explain_prompt(lean_code: str, nl_statement: str = "") -> str:
-    code = lean_code.strip()
-    k = code.find("theorem")
-    if k > 0:
-        code = code[k:]          # skip the import/open header: noise for the explanation
-    nl = f"\nÉnoncé d'origine, en langage naturel : {nl_statement.strip()}\n" if nl_statement.strip() else ""
-    return EXPLAIN_PROMPT.format(nl=nl, code=code)
+def refine_messages(statement: str, previous_proof: str, request: str) -> list[dict]:
+    """Prover conversation for a follow-up on an already verified proof (same style as Goedel's correction rounds)."""
+    return [{"role": "user", "content": initial_prompt(statement)},
+            {"role": "assistant", "content": f"```lean4\n{previous_proof.strip()}\n```"},
+            {"role": "user", "content": REFINE_PROOF.format(request=request.strip())}]
 
 
 def clean_model_text(text: str) -> str:

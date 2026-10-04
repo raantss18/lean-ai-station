@@ -8,6 +8,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Signal
 
 from .. import config
+from ..i18n import _
 from ..errors import Friendly, friendly
 from ..gguf import GGUFError, find_models, read_info
 from ..services import Explainer, Formalizer, GpuMonitor, LeanCompiler, LlamaServer, Net, Prover
@@ -38,6 +39,7 @@ class AppContext(QObject):
     modelsChanged = Signal()
     workspacesChanged = Signal()
     settingsChanged = Signal()
+    languageChanged = Signal(str)        # new interface language: the main window is rebuilt
     proveRequest = Signal(str, str)       # Lean statement to prove immediately, optional informal text
     texRequest = Signal(str)              # path of a .tex file to import
     translateRequest = Signal(str)        # problem in natural language: translate to Lean (user then reviews)
@@ -56,6 +58,10 @@ class AppContext(QObject):
         self.translator_compiler = LeanCompiler(self)
         self.formalizer = Formalizer(self.server, self.translator_compiler, self)
         self.explainer = Explainer(self.server, self)
+        from .pipeline import Pipeline
+        self.pipeline = Pipeline(self)
+        from .updates_ui import UpdateManager
+        self.updates = UpdateManager(self)
         self.gpu = GpuMonitor(self)
         self.models: list = []                   # GGUFInfo or (Path, error)
         self.workspaces: list[Workspace] = []
@@ -69,7 +75,7 @@ class AppContext(QObject):
         self._after_ready: list = []
         self.server.stateChanged.connect(self._server_state)
         self.server.failed.connect(self._server_failed)
-        self.server.notice.connect(lambda m: self.banner.emit(Friendly("Réglage automatique", m, [], "info"), ""))
+        self.server.notice.connect(lambda m: self.banner.emit(Friendly(_("Réglage automatique"), m, [], "info"), ""))
 
     # ---------------------------------------------------------------- background jobs
     def run_bg(self, fn, on_done=None, on_error=None):
@@ -97,8 +103,20 @@ class AppContext(QObject):
             config.save_settings(self.settings)
             config.save_session(self.session)
         except OSError as e:
-            self.banner.emit(Friendly("Impossible d'enregistrer les réglages",
-                                      "Le disque est peut-être plein ou protégé en écriture.", [], "warn"), str(e))
+            self.banner.emit(Friendly(_("Impossible d'enregistrer les réglages"),
+                                      _("Le disque est peut-être plein ou protégé en écriture."), [], "warn"), str(e))
+
+    def request_language(self, code: str):
+        from ..i18n import LANGS, set_language
+        if code not in LANGS or code == self.settings.language:
+            return
+        if self.pipeline.busy or self.verifier.busy:
+            self.toast.emit(_("Une opération est en cours : arrêtez-la d'abord (Échap)."), None, None)
+            return
+        self.settings.language = code
+        set_language(code)
+        self.save_now()
+        self.languageChanged.emit(code)
 
     def set_offline(self, on: bool):
         self.settings.offline = on
@@ -199,7 +217,7 @@ class AppContext(QObject):
         """Warn (banner) when the disk is nearly full. Returns True when space is fine."""
         free = self.disk_free_gb()
         if free < min_gb:
-            self.banner.emit(friendly("disk_low"), f"{free:.1f} Go libres")
+            self.banner.emit(friendly("disk_low"), _("{n:.1f} Go libres").format(n=free))
             return False
         return True
 
@@ -211,9 +229,9 @@ class AppContext(QObject):
     def load_model(self, path: Path | None = None, then=None):
         path = path or self.default_model()
         if path is None:
-            self.banner.emit(Friendly("Aucun modèle installé",
-                                      "Aucun fichier de modèle (.gguf) n'a été trouvé. Ouvrez « Modèles » pour en importer un.",
-                                      [("Ouvrir Modèles", "goto_models")], "warn"), "")
+            self.banner.emit(Friendly(_("Aucun modèle installé"),
+                                      _("Aucun fichier de modèle (.gguf) n'a été trouvé. Ouvrez « Modèles » pour en importer un."),
+                                      [(_("Ouvrir Modèles"), "goto_models")], "warn"), "")
             return
         if then:
             self._after_ready.append(then)
@@ -232,7 +250,7 @@ class AppContext(QObject):
             return
         done = {"x": False}
 
-        def fire(*_):
+        def fire(*_a):
             if done["x"]:
                 return
             done["x"] = True

@@ -1,8 +1,10 @@
 # Lean AI Station
 
+*[English version](README.en.md)*
+
 **Vous décrivez un problème de mathématiques avec vos mots. Une IA l'écrit en Lean, cherche une preuve, et Lean la vérifie.**
 
-![Accueil](docs/screenshots/06_accueil.png)
+![Accueil](docs/screenshots/05_accueil.png)
 
 ## À quoi ça sert, concrètement ?
 
@@ -13,30 +15,38 @@
   L'IA peut se tromper ; Lean, lui, tranche. Une preuve n'est affichée comme réussie que si Lean l'a acceptée,
   sans `sorry` (le mot Lean pour « preuve à compléter ») et sans axiome supplémentaire.
 * **Rien n'est envoyé sur Internet.** Il n'y a ni compte, ni abonnement, ni service en ligne : l'IA est un fichier
-  d'environ 5 Go exécuté directement par la **carte graphique NVIDIA de votre ordinateur**. Internet n'est utile qu'une
-  seule fois, pour installer l'outil.
+  d'environ 5 Go exécuté directement par la **carte graphique NVIDIA de votre ordinateur**. Internet n'est utile que pour
+  installer l'outil et, une fois par semaine si vous le laissez faire, pour savoir s'il existe une mise à jour.
 * **Pas besoin de connaître Lean.** Un bouton **« ❓ Aide »** explique en deux minutes ce qu'est Lean, à quoi ressemble
   un énoncé et pourquoi il faut relire la traduction.
 
 ## Comment l'utiliser
 
-1. **Décrivez votre problème** en français ou en anglais (les formules LaTeX comme `$a^2+b^2\ge 2ab$` sont acceptées),
-   ou **importez un fichier `.tex`** : l'outil en extrait vos théorèmes, lemmes ou exercices.
-2. Cliquez sur **« ✨ Prouver un théorème »** : l'IA traduit votre texte en énoncé Lean et Lean vérifie qu'il est valide.
-   **Relisez l'énoncé** (hypothèses, nombres, conclusion) : Lean prouvera exactement ce texte, pas forcément ce que
-   vous aviez en tête.
-3. Cliquez sur **« ✅ C'est bon : prouver »**. L'IA écrit une preuve ; si Lean la refuse, elle lit l'erreur, corrige et
-   réessaie. Chaque essai est visible.
-4. **« 💬 Expliquer en français »** : une IA raconte la preuve en langage courant, étape par étape (marche aussi sur une
-   preuve Lean que vous avez écrite ou collée).
-5. Récupérez le résultat : **copier**, **enregistrer** en `.lean`, ou **exporter en LaTeX** (document prêt pour Overleaf :
-   votre énoncé, sa version Lean, l'explication et la preuve vérifiée).
+1. **Décrivez votre problème** en français ou en anglais (formules LaTeX acceptées, comme `$a^2+b^2\ge 2ab$`), ou
+   **importez un fichier `.tex`**, puis cliquez sur **« ✨ Prouver un théorème »**.
+2. **Tout s'enchaîne seul** : une IA traduit le problème en énoncé Lean (Lean vérifie qu'il est valide), une autre
+   cherche une preuve (si Lean la refuse, elle lit l'erreur et corrige), une troisième l'explique en langage courant.
+   Le bon modèle est chargé automatiquement à chaque étape.
+3. **Relisez l'énoncé Lean** affiché dans le fil : Lean prouve exactement ce texte, pas forcément ce que vous aviez en tête.
+4. **Continuez la discussion** : « ajoute l'hypothèse n > 0 », « une preuve plus courte », « explique l'étape 2 ».
+   L'outil devine quelle étape refaire (vous pouvez la choisir), et garde toutes les versions (« Revenir à cette version »).
+   Chaque problème est un **dossier** que vous retrouvez plus tard.
+5. Exportez : copie, fichier `.lean`, ou document **LaTeX** pour Overleaf (énoncé, version Lean, explication, preuve).
 
-![Énoncé à relire](docs/screenshots/08_enonce_a_relire.png)
-![Preuve trouvée](docs/screenshots/10_preuve_trouvee.png)
+![Prouvé et expliqué](docs/screenshots/08_prouve_et_explique.png)
+![Demande de suivi](docs/screenshots/10_demande_de_suivi.png)
 
-Autres façons de s'en servir : glisser un fichier `.lean` ou `.tex` sur la fenêtre ; le bouton **✔ Vérifier** contrôle
-un fichier Lean que vous avez écrit.
+**Mémoire de l'assistant**
+* **Votre profil** (onglet Système) : public, niveau, notations. Lu avant chaque traduction et chaque explication.
+* **Le fil du dossier** : chaque correction s'appuie sur les versions précédentes.
+* **La bibliothèque** (onglet 📚) : chaque résultat prouvé y est rangé et proposé comme lemme pour les preuves suivantes.
+
+![Bibliothèque](docs/screenshots/11_bibliotheque.png)
+
+**Langue** : bouton 🌐 dans la barre de gauche (ou onglet Système) pour passer l'interface et les explications en anglais.
+
+Autres usages : glisser un fichier `.lean` ou `.tex` sur la fenêtre ; **✔ Vérifier** (F5) contrôle un fichier Lean écrit
+à la main ; **💬 Expliquer** marche aussi sur une preuve collée dans l'onglet « Énoncé Lean ».
 
 ### LaTeX et Overleaf
 
@@ -87,6 +97,12 @@ Options : `--backend cuda|cpu`, `--no-models`, `--no-translator`, `--no-explaine
 Lancement : menu des applications → **Lean AI Station** (ou `~/lean-ai-station/bin/lean-ai-station`).
 Au premier lancement, un assistant vérifie tout et fait un auto-test d'environ une minute.
 
+**Mises à jour** (onglet Système) : chaque semaine, l'outil regarde s'il existe une nouvelle version de Lean/Mathlib ou
+des modèles Goedel (il ne contacte que GitHub et Hugging Face ; désactivable). Si oui, une notification s'affiche et un
+clic sur **« Installer »** suffit : la nouvelle version est installée à côté de l'ancienne, vérifiée, puis l'ancienne est
+supprimée automatiquement. Une version de Lean encore utilisée par un de vos projets est conservée ; en cas d'échec, rien
+ne change. En terminal : `.venv/bin/python scripts/updater.py check`.
+
 Copie vers un ordinateur sans Internet : `./export_offline.sh /chemin/clé` puis, sur l'autre machine, `bash /chemin/clé/import_offline.sh`.
 Désinstallation : `./uninstall.sh` (liste exactement ce qui sera supprimé).
 
@@ -104,7 +120,8 @@ Désinstallation : `./uninstall.sh` (liste exactement ce qui sera supprimé).
 
 * Tests : `./run_tests.sh` (rapides) ou `./run_tests.sh --all` (avec modèles, Lean et GPU : plusieurs minutes).
 * Code : `app/lean_ai_station/` (PySide6). Moteur : llama.cpp compilé pour CUDA ; vérification : `lean --json`, sans `lake`.
-* Aucune télémétrie. Le mode hors-ligne (activé par défaut) bloque toute connexion non locale de l'application.
+* Aucune télémétrie. Le mode hors-ligne (activé par défaut) bloque toute connexion non locale de l'application, sauf
+  la vérification hebdomadaire des mises à jour (désactivable dans Système).
 
 ## Licence
 

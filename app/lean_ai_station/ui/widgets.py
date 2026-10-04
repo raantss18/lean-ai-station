@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QPlainTextEdit, QPro
                                QTextEdit, QVBoxLayout, QWidget)
 
 from . import theme
+from ..i18n import _
 from ..errors import Friendly
 
 
@@ -58,7 +59,7 @@ class Banner(QFrame):
         self.title = label(obj="H2")
         top.addWidget(self.icon)
         top.addWidget(self.title, 1)
-        self.close_btn = button("✕", tip="Fermer ce message", slot=self.hide)
+        self.close_btn = button("✕", tip=_("Fermer ce message"), slot=self.hide)
         self.close_btn.setFixedWidth(34)
         top.addWidget(self.close_btn)
         lay.addLayout(top)
@@ -87,13 +88,13 @@ class Banner(QFrame):
             if w:
                 w.deleteLater()
         for text, act in f.actions:
-            self.btns.addWidget(button(text, "Primary", slot=lambda _=False, a=act: self._act(a)))
+            self.btns.addWidget(button(text, "Primary", slot=lambda _c=False, a=act: self._act(a)))
         self.details.hide()
         if details.strip():
             self.details.setPlainText(details.strip())
-            t = button("Afficher les détails", "Link")
+            t = button(_("Afficher les détails"), "Link")
             t.clicked.connect(lambda: (self.details.setVisible(not self.details.isVisible()),
-                                       t.setText("Masquer les détails" if self.details.isVisible() else "Afficher les détails")))
+                                       t.setText(_("Masquer les détails") if self.details.isVisible() else _("Afficher les détails"))))
             self.btns.insertWidget(1, t)
         self.show()
 
@@ -114,7 +115,7 @@ class BusyBar(QFrame):
         self.bar = QProgressBar()
         self.bar.setMaximumWidth(260)
         self.bar.setTextVisible(False)
-        self.cancel = button("Annuler", tip="Arrêter cette opération (Échap)", slot=self.cancelled.emit)
+        self.cancel = button(_("Annuler"), tip=_("Arrêter cette opération (Échap)"), slot=self.cancelled.emit)
         lay.addWidget(self.text, 1)
         lay.addWidget(self.bar)
         lay.addWidget(self.cancel)
@@ -147,7 +148,7 @@ class Toast(QFrame):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(14, 8, 8, 8)
         self.text = label()
-        self.undo_btn = button("Annuler", "Primary")
+        self.undo_btn = button(_("Annuler"), "Primary")
         lay.addWidget(self.text)
         lay.addWidget(self.undo_btn)
         self._undo = None
@@ -272,7 +273,7 @@ class LeanEditor(QPlainTextEdit):
         self.setReadOnly(read_only)
         self.hl = LeanHighlighter(self.document())
         self.area = _LineArea(self)
-        self.blockCountChanged.connect(lambda _: self.setViewportMargins(self.line_area_width(), 0, 0, 0))
+        self.blockCountChanged.connect(lambda _c: self.setViewportMargins(self.line_area_width(), 0, 0, 0))
         self.updateRequest.connect(self._upd)
         self.setViewportMargins(self.line_area_width(), 0, 0, 0)
         self._marks: dict[int, str] = {}

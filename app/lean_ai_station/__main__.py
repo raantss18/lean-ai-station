@@ -18,6 +18,7 @@ from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication
 
 from . import config
+from .i18n import _
 from .errors import friendly
 from .services import kill_orphan_server
 
@@ -69,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
         sock.write(("open " + files[0] + "\n").encode() if files else b"show\n")
         sock.waitForBytesWritten(300)
         sock.disconnectFromServer()
-        print("Lean AI Station est déjà ouvert : fenêtre existante mise au premier plan.")
+        print(_("Lean AI Station est déjà ouvert : fenêtre existante mise au premier plan."))
         return 0
     QLocalServer.removeServer(INSTANCE_NAME)
     server = QLocalServer()
@@ -86,11 +87,33 @@ def main(argv: list[str] | None = None) -> int:
 
     theme.apply(app)
     settings, corrupt = config.load_settings()
+    from .i18n import set_language
+    set_language(os.environ.get("LAS_LANG") or settings.language)
     session = config.load_session()
     icon = QIcon(str(ASSETS / "icon.svg"))
     app.setWindowIcon(icon)
     ctx = AppContext(settings, session)
-    win = MainWindow(ctx, icon)
+    holder = {"win": MainWindow(ctx, icon)}
+    ctx.main_window = holder["win"]
+
+    class _Win:                       # always the current window (it is rebuilt when the language changes)
+        def __getattr__(self, name):
+            return getattr(holder["win"], name)
+    win = _Win()
+
+    def rebuild(_code: str):
+        old = holder["win"]
+        page = ctx.session.get("page", "home")
+        geo = old.saveGeometry()
+        new = MainWindow(ctx, icon)
+        new.restoreGeometry(geo)
+        holder["win"] = ctx.main_window = new
+        new.navigate(page if page in new.nav_btns else "home")
+        new.show()
+        old.replaced = True
+        old.close()
+        old.deleteLater()
+    ctx.languageChanged.connect(rebuild)
 
     def raise_window():
         conn = server.nextPendingConnection()
@@ -106,8 +129,8 @@ def main(argv: list[str] | None = None) -> int:
     server.newConnection.connect(raise_window)
 
     # Unix signals -> clean shutdown (timer lets Python run its handlers)
-    signal.signal(signal.SIGTERM, lambda *_: app.closeAllWindows())
-    signal.signal(signal.SIGINT, lambda *_: app.closeAllWindows())
+    signal.signal(signal.SIGTERM, lambda *_c: app.closeAllWindows())
+    signal.signal(signal.SIGINT, lambda *_c: app.closeAllWindows())
     tick = QTimer()
     tick.start(1000)
     tick.timeout.connect(lambda: None)
@@ -135,9 +158,10 @@ def main(argv: list[str] | None = None) -> int:
     if crashed:
         QTimer.singleShot(200, lambda: ctx.banner.emit(friendly("crash_recovered"), ""))
     elif corrupt:
-        QTimer.singleShot(200, lambda: ctx.banner.emit(friendly("crash_recovered"), "settings.json illisible : "
-                                                       "réglages par défaut rétablis (copie conservée)."))
+        QTimer.singleShot(200, lambda: ctx.banner.emit(friendly("crash_recovered"), _("settings.json illisible : "
+                                                       "réglages par défaut rétablis (copie conservée).")))
     QTimer.singleShot(400, ctx.check_disk)
+    QTimer.singleShot(15000, ctx.updates.maybe_check)
 
     rc = app.exec()
     try:

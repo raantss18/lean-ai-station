@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import config
+from .i18n import _
 
 SCAN_ROOTS = [Path.home() / "GitHub", Path.home() / "Documents", Path.home() / "lean", Path.home() / "Lean",
               Path.home() / "Projects", Path.home() / "projets"]
@@ -67,12 +68,12 @@ class Workspace:
         """Plain-French problems; empty list = ready."""
         problems = []
         if not self.path.is_dir():
-            self.problems = ["Le dossier de l'espace de travail est introuvable (pas encore installé ?)."]
+            self.problems = [_("Le dossier de l'espace de travail est introuvable (pas encore installé ?).")]
             return self.problems
         if not self.lean_bin or not self.lean_bin.exists():
-            problems.append(f"La version de Lean « {self.toolchain} » n'est pas installée.")
+            problems.append(_("La version de Lean « {tc} » n'est pas installée.").format(tc=self.toolchain))
         if not self.has_mathlib():
-            problems.append("Mathlib n'est pas compilé dans cet espace.")
+            problems.append(_("Mathlib n'est pas compilé dans cet espace."))
         self.problems = problems
         return problems
 

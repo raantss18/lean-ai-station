@@ -64,11 +64,35 @@ def test_task1_first_verified_proof(app_win, qtbot):
     w = app_win
     w.navigate("home")
     c.click(_home_prove_button(w, 1))                     # « Somme de deux nombres pairs »
-    qtbot.waitUntil(lambda: w.pages["lean"].final_card.isVisible() or
-                    (not w.ctx.prover.running and not w.pages["lean"]._pending_prove and w.ctx.prover.attempts), timeout=900_000)
-    assert w.pages["lean"].final_card.isVisible(), [a.summary for a in w.ctx.prover.attempts]
+    p = w.ctx.pipeline
+    qtbot.waitUntil(lambda: p.busy, timeout=10_000)
+    qtbot.waitUntil(lambda: not p.busy, timeout=1_200_000)
+    d = p.dossier
+    assert d.proof_is_current, [(e.kind, e.text) for e in d.events]
+    assert d.explanation or w.ctx.explainer_model() is None   # explanation follows automatically when installed
     assert c.n <= 3, c.n
-    print(f"TASK1 clicks={c.n}")
+    print(f"TASK1 clicks={c.n} events={[e.kind for e in d.events]}")
+
+
+def test_task5_follow_up_request(app_win, qtbot):
+    """New in 1.1: a plain-language follow-up on an existing proof (1 typed request + 1 click)."""
+    c = Clicks(qtbot)
+    w = app_win
+    w.navigate("home")
+    c.click(_home_prove_button(w, 1))
+    p = w.ctx.pipeline
+    qtbot.waitUntil(lambda: p.busy, timeout=10_000)
+    qtbot.waitUntil(lambda: not p.busy, timeout=1_200_000)
+    assert p.dossier.proof_is_current
+    lean = w.pages["lean"]
+    lean.input.setPlainText("Donne une preuve plus courte")
+    c.click(lean.send_btn)
+    qtbot.waitUntil(lambda: p.busy, timeout=10_000)
+    qtbot.waitUntil(lambda: not p.busy, timeout=1_200_000)
+    d = p.dossier
+    assert len(d.proofs) == 2 and d.proof_is_current, [(e.kind, e.text) for e in d.events]
+    assert c.n <= 3, c.n
+    print(f"TASK5 clicks={c.n} proofs={len(d.proofs)}")
 
 
 def test_task2_load_other_model(app_win, qtbot):
@@ -104,6 +128,7 @@ def test_task3_verify_my_file(app_win, qtbot, tmp_path):
     QApplication.sendEvent(w, ev)
     lean = w.pages["lean"]
     qtbot.waitUntil(lambda: not w.ctx.verifier.busy and "✅" in lean.status_title.text(), timeout=300_000)
+    assert "mon_exercice" in lean.editor.toPlainText()
     print("TASK3 clicks=1 (drag & drop)")
 
 

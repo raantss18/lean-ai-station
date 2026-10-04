@@ -97,6 +97,27 @@ batch, top-p…), mismatched « Réparer »/« Recompiler » wording. All visibl
 | Debian, openSUSE, AMD/Intel GPUs | package lists written from distribution naming, **not tested**; AMD/Intel run on the CPU | ⚠️ |
 | CPU-only speed | 5.1 tok/s generation vs 44 on GPU (BENCH §7) | ✅ measured |
 
+## H. Release 1.1.0 — dossiers, automatic chain, memory, library, English
+Full suite on the real models and Lean 4.9 workspace: **109 passed** (`logs/full_tests_v11.log`, `LAS_TEST_WS=lean-prover49`).
+| Item | Evidence | Status |
+|---|---|---|
+| Fully automatic chain translate → prove → explain, model switched per stage (real models) | `test_usability.py::test_task1` events `[user, statement, proof, info, explanation]`, 1 click; screenshots 07–08 | ✅ |
+| Follow-up request in the thread (real models) | `test_task5_follow_up_request`: 2 clicks, second verified proof | ✅ |
+| Follow-ups routed to the right stage, with history (prover sees the verified proof, formalizer the previous statement, explainer its previous answer) | `test_pipeline.py` (7 tests, fake model server + real Lean 4.9), `test_dossiers.py::test_router` | ✅ |
+| Versions + « Revenir à cette version », delete with undo | `test_thread_shows_versions_and_restore_link`, `test_delete_dossier_is_undoable`, `test_cancel_and_restore` | ✅ |
+| Memory: profile in translator/explainer prompts, not in the prover | `leancheck.formalize_input` / `explain_messages`; `test_pipeline` asserts prompts | ✅ |
+| Library: auto-store, dedupe, same-Lean-version only, relevance, dependencies first, reused in the next dossier | `test_dossiers.py` (library tests), `test_library_result_is_offered_in_the_next_dossier`, `test_library_page_lists_and_removes` | ✅ |
+| Target = last theorem; Goedel prompt unchanged for a single theorem | `test_target_is_the_last_declaration`, `test_single_theorem_prompt_unchanged_by_rsplit` | ✅ |
+| English UI: every visible string translated, same placeholders, live switch without restarting the model | `test_i18n.py` (629 keys), `test_language_switch_rebuilds_ui_in_english`; screenshots 18–20 | ✅ |
+| Explanations in the chosen language | `test_explanation_follow_up_and_language` (English prompt sent) | ✅ |
+| Chat tab removed | `test_chat_tab_is_gone` | ✅ |
+| Real defects found while building 1.1 | Lean check restarted right after « Stop » crashed or reused a stale result (job ids); stale stream signals after cancel; `_` shadowing the translation function | fixed |
+| Updates: version logic (stable tags only, 8B only, GGUF pending, re-published file) | `test_updates.py` (recorded data) | ✅ |
+| Updates: install → verify → switch → delete obsolete; failure keeps the old version; toolchain still used by a project kept | `test_updates.py` (stubbed network) + real run of `install_mathlib` (Mathlib v4.34.1 rebuilt in a test directory: 8 min, test theorem OK, switch and cleanup OK) + scan of the real home (finds the 5 user projects and their toolchains) + real run of `install_model` (5.03 GB downloaded from Hugging Face, SHA-256 OK, loaded and answered on the CPU, switched, an older dummy V1 file deleted) | ✅ |
+| Updates: weekly check, notification once per new version, card in Système | `test_card_lists_updates_and_reports_install`; real check against GitHub/Hugging Face (nothing newer today) | ✅ |
+| Router is keyword-based | ambiguous requests may pick the wrong stage → the stage selector next to « Envoyer » lets the user choose | ⚠️ limit |
+| English quality of model answers | the explainer's English was not reviewed by a native speaker | ⚠️ not verified |
+
 ## Defects found by this acceptance loop and fixed (see DECISIONS D8–D11)
 1. Restart after a server crash loaded the model on the CPU (stale VRAM snapshot) → free VRAM computed excluding our own process.
 2. Race: model load before the first `nvidia-smi` reading → CPU → load now waits for a GPU snapshot.

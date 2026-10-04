@@ -53,6 +53,10 @@ class Settings:
     workspace: str = ""
     prove_attempts: int = 8
     translate_attempts: int = 3
+    pause_after_translation: bool = False   # user choice (v1.1): fully automatic chain by default
+    profile: str = ""                       # « mémoire » read by the translator and the explainer
+    language: str = "fr"
+    check_updates: bool = True              # weekly Lean/Mathlib + Goedel check (GitHub, Hugging Face only)
     overleaf_url: str = "http://127.0.0.1"
     compile_timeout_s: int = 180
     autoload_model: bool = True

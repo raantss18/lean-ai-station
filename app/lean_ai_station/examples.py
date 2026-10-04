@@ -2,6 +2,8 @@
 Lean 4.9-era Mathlib (Goedel) and current Mathlib."""
 from dataclasses import dataclass
 
+from .i18n import _
+
 
 @dataclass(frozen=True)
 class Example:
@@ -49,3 +51,8 @@ theorem carre_positif (x : ℝ) : 0 ≤ x ^ 2 := by
 example : (2 : ℕ) + 2 = 4 := by
   norm_num
 """
+
+
+def example_text(ex: Example) -> str:
+    """The problem as a teacher would say it, in the interface language."""
+    return _(ex.blurb)

@@ -6,6 +6,8 @@ import datetime as _dt
 import re
 from dataclasses import dataclass
 
+from .i18n import _
+
 ENVS = ("theorem", "thm", "lemma", "lem", "proposition", "prop", "corollary", "cor", "exercise", "exercice", "exo",
         "problem", "probleme", "question", "claim", "conjecture", "enonce", "énoncé")
 _ENV_RE = re.compile(r"\\begin\{(" + "|".join(ENVS) + r")(\*?)\}(\[[^\]]*\])?(.*?)\\end\{\1\2\}", re.DOTALL | re.IGNORECASE)
@@ -39,7 +41,7 @@ def extract_statements(tex: str) -> list[TexStatement]:
     for m in _ENV_RE.finditer(tex):
         env = m.group(1).lower()
         counts[env] = counts.get(env, 0) + 1
-        label = _LABELS.get(env, env.capitalize())
+        label = _(_LABELS.get(env, env.capitalize()))
         opt = (m.group(3) or "").strip("[]").strip()
         title = f"{label} {counts[env]}" + (f" — {opt}" if opt else "")
         body = clean_body(m.group(4))
@@ -50,7 +52,7 @@ def extract_statements(tex: str) -> list[TexStatement]:
         body = clean_body(doc.group(1) if doc else tex)
         body = re.sub(r"\\(maketitle|tableofcontents|newpage|clearpage)\b", "", body).strip()
         if body:
-            out.append(TexStatement("Tout le document", body[:6000]))
+            out.append(TexStatement(_("Tout le document"), body[:6000]))
     return out
 
 

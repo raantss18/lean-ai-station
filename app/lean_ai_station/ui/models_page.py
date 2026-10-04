@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QFileDialog, QHBoxLayout, QHea
                                QListWidgetItem, QSizePolicy, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
 
 from .. import config
+from ..i18n import _
 from ..errors import Friendly, friendly
 from ..services import GuardedNAM, Net
 from . import theme
@@ -29,22 +30,22 @@ class ModelsPage(QWidget):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(20, 16, 20, 12)
         head = QHBoxLayout()
-        head.addWidget(label("Modèles installés", "H2"))
+        head.addWidget(label(_("Modèles installés"), "H2"))
         head.addStretch(1)
-        head.addWidget(button("Importer un fichier .gguf…", tip="Copier un modèle GGUF dans le dossier des modèles",
+        head.addWidget(button(_("Importer un fichier .gguf…"), tip=_("Copier un modèle GGUF dans le dossier des modèles"),
                               slot=self.import_model))
-        head.addWidget(button("Ouvrir le dossier", tip=str(config.MODELS_DIR),
+        head.addWidget(button(_("Ouvrir le dossier"), tip=str(config.MODELS_DIR),
                               slot=lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(config.MODELS_DIR)))))
-        head.addWidget(button("Actualiser", tip="Relire le dossier des modèles", slot=lambda: ctx.refresh_models()))
+        head.addWidget(button("Actualiser", tip=_("Relire le dossier des modèles"), slot=lambda: ctx.refresh_models()))
         lay.addLayout(head)
-        lay.addWidget(label(f"Dossier : {config.tilde(config.MODELS_DIR)}", "Muted"))
+        lay.addWidget(label(_("Dossier : {d}").format(d=config.tilde(config.MODELS_DIR)), "Muted"))
 
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(["Nom", "Quantification", "Taille", "Carte graphique", "État"])
-        self.table.horizontalHeaderItem(1).setToolTip("Précision du modèle compressé : Q4_K_M = bon compromis "
-                                                      "vitesse/qualité ; Q5/Q6/Q8 = plus précis mais plus lourd.")
-        self.table.horizontalHeaderItem(3).setToolTip("Le modèle tient-il entièrement dans la mémoire de la carte "
-                                                      "graphique (VRAM) ? Sinon il sera plus lent.")
+        self.table.horizontalHeaderItem(1).setToolTip(_("Précision du modèle compressé : Q4_K_M = bon compromis "
+                                                      "vitesse/qualité ; Q5/Q6/Q8 = plus précis mais plus lourd."))
+        self.table.horizontalHeaderItem(3).setToolTip(_("Le modèle tient-il entièrement dans la mémoire de la carte "
+                                                      "graphique (VRAM) ? Sinon il sera plus lent."))
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         for c in range(1, 5):
             self.table.horizontalHeader().setSectionResizeMode(c, QHeaderView.ResizeToContents)
@@ -55,14 +56,14 @@ class ModelsPage(QWidget):
         self.table.itemSelectionChanged.connect(self._sel)
         self.table.doubleClicked.connect(lambda _i: self.load())
         lay.addWidget(self.table, 1)
-        self.empty = label("Aucun modèle trouvé. Cliquez sur « Importer un fichier .gguf… » ou téléchargez-en un ci-dessous.",
+        self.empty = label(_("Aucun modèle trouvé. Cliquez sur « Importer un fichier .gguf… » ou téléchargez-en un ci-dessous."),
                            "Muted", wrap=True)
         lay.addWidget(self.empty)
 
         row = QHBoxLayout()
-        self.load_btn = button("▶ Charger", "Primary", "Charger ce modèle sur la carte graphique (double-clic)", self.load)
-        self.unload_btn = button("⏏ Décharger", tip="Libérer la mémoire de la carte graphique", slot=self.unload)
-        self.del_btn = button("Supprimer", "Danger", "Mettre le fichier à la corbeille (annulable)", self.delete)
+        self.load_btn = button(_("▶ Charger"), "Primary", _("Charger ce modèle sur la carte graphique (double-clic)"), self.load)
+        self.unload_btn = button(_("⏏ Décharger"), tip=_("Libérer la mémoire de la carte graphique"), slot=self.unload)
+        self.del_btn = button("Supprimer", "Danger", _("Mettre le fichier à la corbeille (annulable)"), self.delete)
         row.addWidget(self.load_btn)
         row.addWidget(self.unload_btn)
         row.addStretch(1)
@@ -73,11 +74,11 @@ class ModelsPage(QWidget):
 
         # Hugging Face download
         hf = Card()
-        hf.lay.addWidget(label("Télécharger depuis Hugging Face (nécessite Internet)", "H2"))
+        hf.lay.addWidget(label(_("Télécharger depuis Hugging Face (nécessite Internet)"), "H2"))
         r = QHBoxLayout()
         self.repo = QLineEdit("mradermacher/Goedel-Prover-V2-8B-GGUF")
-        self.repo.setToolTip("Nom du dépôt Hugging Face contenant des fichiers .gguf")
-        self.search_btn = button("Lister les fichiers", tip="Afficher les fichiers .gguf du dépôt", slot=self.hf_list)
+        self.repo.setToolTip(_("Nom du dépôt Hugging Face contenant des fichiers .gguf"))
+        self.search_btn = button(_("Lister les fichiers"), tip=_("Afficher les fichiers .gguf du dépôt"), slot=self.hf_list)
         r.addWidget(self.repo, 1)
         r.addWidget(self.search_btn)
         hf.lay.addLayout(r)
@@ -87,7 +88,7 @@ class ModelsPage(QWidget):
         r2 = QHBoxLayout()
         self.offline_lbl = label("", "Muted", wrap=True)
         r2.addWidget(self.offline_lbl, 1)
-        self.dl_btn = button("Télécharger", "Primary", "Télécharger le fichier sélectionné dans le dossier des modèles",
+        self.dl_btn = button(_("Télécharger"), "Primary", _("Télécharger le fichier sélectionné dans le dossier des modèles"),
                              self.hf_download)
         r2.addWidget(self.dl_btn)
         hf.lay.addLayout(r2)
@@ -108,16 +109,16 @@ class ModelsPage(QWidget):
     def _fits(self, size: int, info=None) -> tuple[str, str]:
         tot = self.ctx.vram_total()
         if not tot:
-            return "Inconnue", theme.MUTED
+            return _("Inconnue"), theme.MUTED
         kv = info.kv_bytes(self.ctx.settings.server.ctx_size, self.ctx.settings.server.kv_type) if info else 0
         need = (size + kv) / 2**20 + 800
         if need <= tot - 500:
-            return "✔ Tient entièrement", theme.OK
+            return _("✔ Tient entièrement"), theme.OK
         if size / 2**20 < tot:
-            return "◐ Partiellement (plus lent)", theme.WARN
-        return "✖ Trop gros (très lent)", theme.ERR
+            return _("◐ Partiellement (plus lent)"), theme.WARN
+        return _("✖ Trop gros (très lent)"), theme.ERR
 
-    def fill(self, *_):
+    def fill(self, *_a):
         self.table.setRowCount(0)
         loaded = self.ctx.server.model_path if self.ctx.server.state in ("ready", "starting") else None
         for m in self.ctx.models:
@@ -125,7 +126,7 @@ class ModelsPage(QWidget):
             self.table.insertRow(r)
             if isinstance(m, tuple):
                 p, err = m
-                vals = [p.name, "?", human(p.stat().st_size) if p.exists() else "?", "—", f"⚠️ Illisible : {err}"]
+                vals = [p.name, "?", human(p.stat().st_size) if p.exists() else "?", "—", _("⚠️ Illisible : {err}").format(err=err)]
                 color = theme.ERR
                 path = p
                 info = None
@@ -134,9 +135,9 @@ class ModelsPage(QWidget):
                 fit, color = self._fits(m.size, m)
                 st = ""
                 if loaded and Path(loaded) == m.path:
-                    st = "🟢 Chargé" if self.ctx.server.state == "ready" else "🟡 Chargement…"
-                role = ("traduction texte → Lean" if self.ctx.is_formalizer(m.path) else
-                        "explication en français" if self.ctx.is_explainer(m.path) else "preuves")
+                    st = _("🟢 Chargé") if self.ctx.server.state == "ready" else _("🟡 Chargement…")
+                role = (_("traduction texte → Lean") if self.ctx.is_formalizer(m.path) else
+                        _("explication en langage courant") if self.ctx.is_explainer(m.path) else _("preuves"))
                 vals = [f"{m.path.name}  ·  {role}", m.quant, human(m.size), fit, st]
             for c, v in enumerate(vals):
                 it = QTableWidgetItem(v)
@@ -151,8 +152,8 @@ class ModelsPage(QWidget):
         self.empty.setVisible(not self.ctx.models)
         self._sel()
 
-    def _fit_column(self, *_):
-        if self.table.rowCount() and self.table.item(0, 3) and self.table.item(0, 3).text() == "Inconnue":
+    def _fit_column(self, *_a):
+        if self.table.rowCount() and self.table.item(0, 3) and self.table.item(0, 3).text() == _("Inconnue"):
             self.fill()
 
     def _selected(self) -> Path | None:
@@ -171,7 +172,7 @@ class ModelsPage(QWidget):
         p = self._selected()
         if p:
             self.ctx.load_model(p)
-            self.ctx.toast.emit(f"Chargement de {p.name}…", None, None)
+            self.ctx.toast.emit(_("Chargement de {name}…").format(name=p.name), None, None)
 
     def unload(self):
         self.ctx.server.stop()
@@ -184,7 +185,7 @@ class ModelsPage(QWidget):
             self.ctx.server.stop()
         ok, trashed = QFile.moveToTrash(str(p))
         if not ok:
-            self.ctx.banner.emit(Friendly("Suppression impossible", "Le fichier n'a pas pu être mis à la corbeille.",
+            self.ctx.banner.emit(Friendly(_("Suppression impossible"), _("Le fichier n'a pas pu être mis à la corbeille."),
                                           [], "warn"), str(p))
             return
         sha = Path(str(p) + ".sha256")
@@ -199,19 +200,19 @@ class ModelsPage(QWidget):
                 if sha_tr:
                     shutil.move(sha_tr, sha)
             except OSError as e:
-                self.ctx.banner.emit(Friendly("Restauration impossible", "Restaurez le fichier depuis la corbeille.",
+                self.ctx.banner.emit(Friendly(_("Restauration impossible"), _("Restaurez le fichier depuis la corbeille."),
                                               [], "warn"), str(e))
             self.ctx.refresh_models()
-        self.ctx.toast.emit(f"{p.name} mis à la corbeille.", undo, None)
+        self.ctx.toast.emit(_("{name} mis à la corbeille.").format(name=p.name), undo, None)
 
     def import_model(self):
-        src, _ = QFileDialog.getOpenFileName(self, "Importer un modèle", str(Path.home()), "Modèles GGUF (*.gguf)")
+        src, _f = QFileDialog.getOpenFileName(self, _("Importer un modèle"), str(Path.home()), _("Modèles GGUF (*.gguf)"))
         if not src:
             return
         src = Path(src)
         dst = config.MODELS_DIR / src.name
         if dst.exists():
-            self.ctx.toast.emit("Ce modèle est déjà installé.", None, None)
+            self.ctx.toast.emit(_("Ce modèle est déjà installé."), None, None)
             return
         if self.ctx.disk_free_gb() < src.stat().st_size / 1e9 + 5:
             self.ctx.banner.emit(friendly("disk_low"), "")
@@ -222,7 +223,7 @@ class ModelsPage(QWidget):
         except (OSError, GGUFError) as e:
             self.ctx.banner.emit(friendly("bad_model"), str(e))
             return
-        self.busy.start(f"Copie de {src.name}…", cancellable=False)
+        self.busy.start(_("Copie de {name}…").format(name=src.name), cancellable=False)
         self._import_cancel = False
 
         def copy():
@@ -234,11 +235,11 @@ class ModelsPage(QWidget):
         def done(_r):
             self.busy.stop()
             self.ctx.refresh_models()
-            self.ctx.toast.emit(f"Modèle importé : {src.name}", None, None)
+            self.ctx.toast.emit(_("Modèle importé : {name}").format(name=src.name), None, None)
 
         def err(e, tb):
             self.busy.stop()
-            self.ctx.banner.emit(Friendly("Import impossible", "La copie a échoué (disque plein ?).", [], "warn"), tb)
+            self.ctx.banner.emit(Friendly(_("Import impossible"), _("La copie a échoué (disque plein ?)."), [], "warn"), tb)
         self.ctx.run_bg(copy, done, err)
 
     # ------------------------------------------------------------ Hugging Face
@@ -246,8 +247,8 @@ class ModelsPage(QWidget):
         off = self.ctx.settings.offline
         for w in (self.search_btn, self.dl_btn, self.repo):
             w.setEnabled(not off)
-        self.offline_lbl.setText("🔒 Mode hors-ligne actif : téléchargement désactivé (modifiable dans « Système »)."
-                                 if off else "Le fichier sera vérifié puis ajouté à la liste.")
+        self.offline_lbl.setText(_("🔒 Mode hors-ligne actif : téléchargement désactivé (modifiable dans « Système »).")
+                                 if off else _("Le fichier sera vérifié puis ajouté à la liste."))
 
     def hf_list(self):
         if not Net.allowed("https://huggingface.co"):
@@ -255,7 +256,7 @@ class ModelsPage(QWidget):
             return
         repo = self.repo.text().strip()
         r = self.nam.get(QNetworkRequest(QUrl(f"https://huggingface.co/api/models/{repo}/tree/main")))
-        self.busy.start("Recherche des fichiers…")
+        self.busy.start(_("Recherche des fichiers…"))
         r.finished.connect(self._listed)
 
     def _listed(self):
@@ -270,7 +271,7 @@ class ModelsPage(QWidget):
         except (ValueError, TypeError):
             files = []
         if r.error() != QNetworkReply.NoError or not files:
-            self.ctx.banner.emit(Friendly("Aucun fichier trouvé", "Vérifiez le nom du dépôt et la connexion Internet.",
+            self.ctx.banner.emit(Friendly(_("Aucun fichier trouvé"), _("Vérifiez le nom du dépôt et la connexion Internet."),
                                           [], "warn"), r.errorString())
             return
         for f in files:
@@ -281,7 +282,7 @@ class ModelsPage(QWidget):
     def hf_download(self):
         it = self.hf_files.currentItem()
         if not it:
-            self.ctx.toast.emit("Choisissez d'abord un fichier dans la liste.", None, None)
+            self.ctx.toast.emit(_("Choisissez d'abord un fichier dans la liste."), None, None)
             return
         if not Net.allowed("https://huggingface.co"):
             self.ctx.banner.emit(friendly("offline_blocked"), "")
@@ -299,9 +300,9 @@ class ModelsPage(QWidget):
         self.reply = self.nam.get(req)
         self.reply.readyRead.connect(lambda: self._dl_file.write(bytes(self.reply.readAll())) if self.reply else None)
         self.reply.downloadProgress.connect(lambda a, b: self.busy.progress(int(a / 2**20), max(1, int(b / 2**20)),
-                                                                            f"Téléchargement : {human(a)} / {human(b)}"))
+                                                                            _("Téléchargement : {a} / {b}").format(a=human(a), b=human(b))))
         self.reply.finished.connect(self._dl_done)
-        self.busy.start(f"Téléchargement de {name}…", maximum=1)
+        self.busy.start(_("Téléchargement de {name}…").format(name=name), maximum=1)
 
     def _cancel_dl(self):
         if self.reply is not None:
@@ -319,9 +320,9 @@ class ModelsPage(QWidget):
         if not ok:
             self._dl_tmp.unlink(missing_ok=True)
             if r.error() != QNetworkReply.OperationCanceledError:
-                self.ctx.banner.emit(Friendly("Téléchargement interrompu", "Vérifiez la connexion puis réessayez.",
+                self.ctx.banner.emit(Friendly(_("Téléchargement interrompu"), _("Vérifiez la connexion puis réessayez."),
                                               [], "warn"), r.errorString())
             return
         self._dl_tmp.rename(self._dl_path)
         self.ctx.refresh_models()
-        self.ctx.toast.emit(f"Téléchargé : {self._dl_path.name}", None, None)
+        self.ctx.toast.emit(_("Téléchargé : {name}").format(name=self._dl_path.name), None, None)

@@ -6,25 +6,27 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
 from .. import __version__
+from ..i18n import LANGS, _, language
 from . import theme
 from .help import HelpDialog
 from .home import HomePage
 from .lean_page import LeanPage
+from .library_page import LibraryPage
 from .models_page import ModelsPage
 from .server_page import ServerPage
 from .system_page import SystemPage
 from .widgets import Banner, Toast, button, label, shortcut
 from .wizard import Wizard
 
-NAV = [("home", "🏠  Accueil", "Ctrl+1"), ("lean", "∀  Lean", "Ctrl+2"), ("models", "📦  Modèles", "Ctrl+3"),
-       ("server", "🖥  Serveur", "Ctrl+4"), ("system", "⚙  Système", "Ctrl+5")]
+NAV = [("home", "🏠  Accueil", "Ctrl+1"), ("lean", "∀  Lean", "Ctrl+2"), ("library", "📚  Bibliothèque", "Ctrl+3"),
+       ("models", "📦  Modèles", "Ctrl+4"), ("server", "🖥  Serveur", "Ctrl+5"), ("system", "⚙  Système", "Ctrl+6")]
 
 
 class MainWindow(QMainWindow):
     def __init__(self, ctx, icon: QIcon | None = None):
         super().__init__()
         self.ctx = ctx
-        self.setWindowTitle("Lean AI Station")
+        self.setWindowTitle(_("Lean AI Station"))
         if icon:
             self.setWindowIcon(icon)
         self.resize(1360, 860)
@@ -41,22 +43,27 @@ class MainWindow(QMainWindow):
         side.setFixedWidth(196)
         sl = QVBoxLayout(side)
         sl.setContentsMargins(10, 14, 10, 10)
-        sl.addWidget(label("Lean AI Station", "AppTitle"))
+        sl.addWidget(label(_("Lean AI Station"), "AppTitle"))
         self.group = QButtonGroup(self)
         self.nav_btns = {}
         for key, text, keys in NAV:
-            b = button(text, tip=f"{text.split('  ')[1]} ({keys})")
+            b = button(_(text), tip=f"{_(text).split('  ')[1]} ({keys})")
             b.setCheckable(True)
-            b.clicked.connect(lambda _=False, k=key: self.navigate(k))
+            b.clicked.connect(lambda _c=False, k=key: self.navigate(k))
             self.group.addButton(b)
             self.nav_btns[key] = b
             sl.addWidget(b)
             shortcut(self, keys, lambda k=key: self.navigate(k))
         sl.addStretch(1)
-        self.help_btn = button("❓  Aide", tip="Lean pour les débutants : à quoi ça sert, comment faire (F1)",
+        self.help_btn = button(_("❓  Aide"), tip=_("Lean pour les débutants : à quoi ça sert, comment faire (F1)"),
                                slot=self.show_help)
         self.help_btn.setStyleSheet("text-align: left; padding: 10px 14px; border: none; background: transparent;")
         sl.addWidget(self.help_btn)
+        other = "en" if language() == "fr" else "fr"
+        self.lang_btn = button(f"🌐  {LANGS[other]}", tip=_("Changer la langue de l'interface et des réponses de l'IA"),
+                               slot=lambda _c=False: self.ctx.request_language(other))
+        self.lang_btn.setStyleSheet("text-align: left; padding: 10px 14px; border: none; background: transparent;")
+        sl.addWidget(self.lang_btn)
         shortcut(self, "F1", self.show_help)
         self.side = side
         h.addWidget(side)
@@ -79,10 +86,10 @@ class MainWindow(QMainWindow):
         sbl = QHBoxLayout(sb)
         sbl.setContentsMargins(14, 5, 14, 5)
         self.st_model = label()
-        self.st_model.setToolTip("État du modèle d'IA (cliquez sur « Serveur » pour les détails)")
+        self.st_model.setToolTip(_("État du modèle d'IA (cliquez sur « Serveur » pour les détails)"))
         self.st_gpu = label()
         self.st_net = label()
-        self.st_net.setToolTip("Mode hors-ligne : modifiable dans « Système »")
+        self.st_net.setToolTip(_("Mode hors-ligne : modifiable dans « Système »"))
         sbl.addWidget(self.st_model)
         sbl.addStretch(1)
         sbl.addWidget(self.st_gpu)
@@ -93,7 +100,7 @@ class MainWindow(QMainWindow):
         ml.addWidget(sb)
         h.addWidget(main, 1)
 
-        self.pages = {"home": HomePage(ctx), "lean": LeanPage(ctx), "models": ModelsPage(ctx),
+        self.pages = {"home": HomePage(ctx), "lean": LeanPage(ctx), "library": LibraryPage(ctx), "models": ModelsPage(ctx),
                       "server": ServerPage(ctx), "system": SystemPage(ctx), "wizard": Wizard(ctx)}
         for p in self.pages.values():
             self.stack.addWidget(p)
@@ -136,20 +143,20 @@ class MainWindow(QMainWindow):
     def _toast(self, text, undo, on_expire):
         self.toast.show_toast(text, undo, on_expire=on_expire)
 
-    def _status(self, *_):
+    def _status(self, *_a):
         srv = self.ctx.server
         if srv.state == "ready" and srv.plan:
-            self.st_model.setText(f"🟢 {srv.plan.model.name}  ·  {srv.offload or srv.plan.gpu_layers} couches GPU")
+            self.st_model.setText(_("🟢 {model}  ·  {n} couches GPU").format(model=srv.plan.model.name, n=srv.offload or srv.plan.gpu_layers))
         elif srv.state == "starting":
-            self.st_model.setText("🟡 Chargement du modèle…")
+            self.st_model.setText(_("🟡 Chargement du modèle…"))
         elif srv.state == "stopping":
-            self.st_model.setText("🟠 Arrêt du modèle…")
+            self.st_model.setText(_("🟠 Arrêt du modèle…"))
         else:
-            self.st_model.setText("⚪ Modèle non chargé (chargement automatique au besoin)")
+            self.st_model.setText(_("⚪ Modèle non chargé (chargement automatique au besoin)"))
         g = self.ctx.gpu.last
-        self.st_gpu.setText(f"GPU {g['used'] / 1024:.1f}/{g['total'] / 1024:.1f} Go · {g['temp']} °C · {g['util']} %"
-                            if g else "GPU : —")
-        self.st_net.setText("🔒 Hors-ligne" if self.ctx.settings.offline else "🌐 En ligne")
+        self.st_gpu.setText(_("GPU {u:.1f}/{t:.1f} Go · {temp} °C · {util} %").format(u=g['used'] / 1024, t=g['total'] / 1024, temp=g['temp'], util=g['util'])
+                            if g else _("GPU : —"))
+        self.st_net.setText(_("🔒 Hors-ligne") if self.ctx.settings.offline else _("🌐 En ligne"))
 
     def show_help(self):
         HelpDialog(self).exec()
@@ -176,6 +183,12 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, e):  # noqa: N802
         self.ctx.session["geometry"] = bytes(self.saveGeometry().toBase64()).decode()
+        if getattr(self, "replaced", False):          # language switch: a new window takes over, keep everything running
+            super().closeEvent(e)
+            return
+        self.ctx.pipeline.cancel()
+        self.ctx.formalizer.cancel()
+        self.ctx.explainer.cancel()
         self.ctx.prover.cancel()
         for c in (self.ctx.compiler, self.ctx.verifier):
             c.cancel()
