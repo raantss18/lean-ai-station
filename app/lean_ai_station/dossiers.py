@@ -60,6 +60,7 @@ class Dossier:
     id: str
     title: str
     problem: str = ""
+    understood: str = ""              # the problem rewritten as a precise statement (« comprendre » step)
     workspace: str = ""
     theorem: str = ""                 # Lean name of the target theorem (unique per dossier)
     created: float = field(default_factory=time.time)

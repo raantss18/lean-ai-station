@@ -20,6 +20,8 @@ BEHAVIOUR: dict = {}
 def answer(body: dict) -> str:
     msgs = body["messages"]
     first = msgs[0]["content"]
+    if first.startswith("You prepare a mathematics problem"):
+        return "UNKNOWN" if BEHAVIOUR.get("unknown") else "Let $a$ and $b$ be even natural numbers. Prove that $a + b$ is even."
     if first.startswith("Please autoformalize"):
         name = re.search(r"Use the following theorem name: (\S+)", first).group(1)
         if BEHAVIOUR.get("bad_statement"):
@@ -98,12 +100,14 @@ def test_full_automatic_chain(qtbot, ctx):
     qtbot.waitUntil(lambda: p.busy, timeout=5000)
     wait_idle(qtbot, ctx)
     d = p.dossier
-    assert kinds(d) == ["user", "statement", "proof", "info", "explanation"], [(e.kind, e.text) for e in d.events]
+    assert kinds(d) == ["user", "understood", "statement", "proof", "info", "explanation"], [(e.kind, e.text) for e in d.events]
+    assert d.understood.startswith("Let $a$ and $b$ be even") and d.understood in d.events[1].text
     assert d.statement.rstrip().endswith("Even (a + b) := by sorry") and d.theorem in d.statement
     assert "exact Even.add ha hb" in d.proof and d.proof_is_current
     assert d.explanation.startswith("**Énoncé.**")
     roles = [r["messages"][0]["content"].split(" ")[0] for r in REQUESTS]
-    assert roles == ["Please", "Complete", "Tu"]                         # formalizer → prover → explainer
+    assert roles == ["You", "Please", "Complete", "Tu"]           # understand → formalizer → prover → explainer
+    assert "Let $a$ and $b$ be even natural numbers" in REQUESTS[1]["messages"][0]["content"]   # formalizer gets it
     assert p.store.load(d.id).to_json() == d.to_json()                     # persisted
     assert [e.name for e in p.library.entries] == [d.theorem]              # library updated
 
@@ -177,7 +181,7 @@ def test_pause_option_and_failed_translation(qtbot, ctx):
     p.start("Montrer que la somme de deux entiers pairs est paire.")
     qtbot.waitUntil(lambda: p.busy, timeout=5000)
     wait_idle(qtbot, ctx)
-    assert kinds(p.dossier) == ["user", "statement", "info"] and not p.dossier.proof
+    assert kinds(p.dossier) == ["user", "understood", "statement", "info"] and not p.dossier.proof
     ctx.settings.pause_after_translation = False
     BEHAVIOUR["bad_statement"] = True
     p.start("Problème qui se traduit mal")
@@ -202,3 +206,21 @@ def test_cancel_and_restore(qtbot, ctx):
     assert p.dossier.statement.rstrip().endswith("Even (a + b) := by sorry") and not p.dossier.proof_is_current
     p.restore("proof", 0)
     assert p.dossier.proof_is_current
+
+
+def test_unknown_request_stops_and_asks_for_the_statement(qtbot, ctx):
+    p = ctx.pipeline
+    BEHAVIOUR["unknown"] = True
+    p.start("lemme des bergers")
+    qtbot.waitUntil(lambda: p.busy, timeout=5000)
+    wait_idle(qtbot, ctx)
+    d = p.dossier
+    assert kinds(d) == ["user", "error"] and not d.statement
+    assert [r["messages"][0]["content"].split(" ")[0] for r in REQUESTS] == ["You"]     # nothing invented
+    # the user then writes the statement: the chain restarts with both messages
+    BEHAVIOUR.clear()
+    REQUESTS.clear()
+    p.request("Pour tous entiers pairs a et b, a + b est pair.")
+    wait_idle(qtbot, ctx)
+    assert d.statement and "lemme des bergers" in REQUESTS[0]["messages"][0]["content"]
+    assert "a + b est pair" in REQUESTS[0]["messages"][0]["content"]

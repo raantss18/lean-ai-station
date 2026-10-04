@@ -25,7 +25,8 @@ fait vérifier le résultat par Lean. L'IA peut se tromper ; <b>Lean, lui, ne se
 <ol>
 <li><b>Écrivez votre problème</b> avec vos mots, en français ou en anglais (formules LaTeX acceptées), ou importez un
 fichier <code>.tex</code>. Cliquez sur <b>« Prouver »</b>.</li>
-<li>Tout s'enchaîne seul : l'IA <b>traduit</b> le problème en Lean, une autre IA <b>cherche une preuve</b> (si Lean la
+<li>Tout s'enchaîne seul : l'IA <b>reformule</b> d'abord votre demande en énoncé mathématique précis (affiché dans le
+fil), puis la <b>traduit</b> en Lean, une autre IA <b>cherche une preuve</b> (si Lean la
 refuse, elle lit l'erreur et corrige), puis une troisième l'<b>explique</b> en langage courant. Le bon modèle est chargé
 automatiquement à chaque étape (quelques secondes).</li>
 <li>Le résultat reste dans un <b>dossier</b> : vous pouvez ensuite écrire une demande, comme dans une discussion :
@@ -91,7 +92,8 @@ the result. The AI can be wrong; <b>Lean cannot</b>: Lean has the final say.</p>
 <ol>
 <li><b>Write your problem</b> in your own words, in English or French (LaTeX formulas welcome), or import a
 <code>.tex</code> file. Click <b>“Prove”</b>.</li>
-<li>Everything runs on its own: one AI <b>translates</b> the problem into Lean, another <b>searches for a proof</b> (when
+<li>Everything runs on its own: the AI first <b>rewrites</b> your request as a precise mathematical statement (shown in
+the thread), then <b>translates</b> it into Lean, another <b>searches for a proof</b> (when
 Lean rejects it, it reads the error and fixes it), and a third one <b>explains</b> it in plain language. The right model
 is loaded automatically for each step (a few seconds).</li>
 <li>The result stays in a <b>dossier</b>: you can then type a request, as in a chat: “add the hypothesis n &gt; 0”,

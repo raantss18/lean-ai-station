@@ -22,7 +22,8 @@ and another AI explains it in plain language.**
 
 1. **Describe your problem** in English or French (LaTeX formulas such as `$a^2+b^2\ge 2ab$` are welcome), or **import a
    `.tex` file**, then click **“✨ Prove a theorem”**.
-2. **Everything runs on its own**: one AI translates the problem into a Lean statement (Lean checks it is valid),
+2. **Everything runs on its own**: one AI first rewrites your request as a precise mathematical statement (for example
+   “incomplete basis theorem” → “every linearly independent family extends to a basis”), another translates it into a Lean statement (Lean checks it is valid),
    another searches for a proof (when Lean rejects it, it reads the error and fixes it), a third one explains it in plain
    language. The right model is loaded automatically for each step.
 3. **Read the Lean statement** shown in the thread: Lean proves exactly that text, not necessarily what you meant.

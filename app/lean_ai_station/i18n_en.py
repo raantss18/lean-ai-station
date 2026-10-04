@@ -821,4 +821,12 @@ EN: dict[str, str] = {
         'prover',
     'traducteur':
         'translator',
+    "Je ne reconnais pas d'énoncé mathématique dans votre demande. Écrivez le résultat à prouver avec ses hypothèses, par exemple : « toute famille libre d'un espace vectoriel de dimension finie se complète en une base ».":
+        'I do not recognise a mathematical statement in your request. Write the result to prove with its hypotheses, for example: “every linearly independent family of a finite-dimensional vector space extends to a basis”.',
+    "L'IA reformule votre demande en un énoncé mathématique précis, avec toutes ses hypothèses.":
+        'The AI rewrites your request as a precise mathematical statement, with all its hypotheses.',
+    "Problème compris ainsi (c'est ce texte que l'IA traduit en Lean) :":
+        'Problem understood as follows (this is the text the AI translates into Lean):',
+    '⓪ Compréhension du problème…':
+        '⓪ Understanding the problem…',
 }

@@ -329,19 +329,63 @@ def detect_loop(text: str, min_chars: int = 600, min_reps: int = 5, max_unit: in
 
     The end of `text` must be one block repeated ≥ 5 times. The *shortest* such period decides: a short period
     (< 60 chars, e.g. a repeated tactic line like `· norm_num`) needs 1500 characters of evidence because legitimate
-    proofs repeat such lines; a longer block needs 600."""
+    proofs repeat such lines; a longer block needs 600. Inside a Lean code block (odd number of ``` fences) correct
+    proofs repeat whole tactic blocks (`<;> (try norm_num) <;> …` five times in an answer Lean accepted, D22), so
+    there it takes 12 repetitions and 3000 characters. Pass the whole answer so that the fences can be counted."""
     n = len(text)
+    in_code = text.count("```") % 2 == 1
     for unit in range(4, min(max_unit, n // min_reps) + 1):
         if text[-unit:] != text[-2 * unit:-unit]:
             continue
         reps = 2
         while (reps + 1) * unit <= n and text[-(reps + 1) * unit:-reps * unit] == text[-unit:]:
             reps += 1
-        if reps < min_reps:
+        if reps < (12 if in_code else min_reps):
             continue
         need = min_chars if unit >= 60 else 2 * min_chars + 300
+        if in_code:
+            need = max(need, 5 * min_chars)
         return (unit, reps) if reps * unit >= need else None
     return None
+
+
+_SENT_SPLIT = re.compile(r"(?<=[.!?;:])\s+|\n+")
+
+
+def _sentences(prose: str) -> list[str]:
+    out = []
+    for raw in _SENT_SPLIT.split(prose):
+        t = re.sub(r"[\s`*_]+", " ", raw).strip().lower()
+        if len(t) >= 30:
+            out.append(t)
+    return out
+
+
+def detect_rambling(text: str, window: int = 8000, min_chars: int = 20000, min_ratio: float = 0.6,
+                    min_repeats: int = 12) -> tuple[int, int] | None:
+    """Detect reasoning that goes round in circles with small variations (not caught by `detect_loop`).
+
+    Code blocks are ignored (proofs legitimately repeat tactic lines). In the last `window` characters of prose,
+    count the sentences already written earlier in the answer: when at least `min_ratio` of them (and at least
+    `min_repeats`) are repeats, the model is recycling its own paragraphs. Returns (repeated, total) or None.
+
+    Calibrated on real Goedel-Prover answers (DECISIONS D22): the model sometimes circles for a while and then
+    escapes with a correct proof (seen up to ≈ 16 000 characters), so nothing is judged before 20 000 characters of
+    prose (≈ 6 000 tokens); a run still recycling then is stopped instead of running to the 16 384-token limit."""
+    if len(text) < min_chars:
+        return None
+    prose = re.sub(r"```.*?(?:```|\Z)", "\n", text, flags=re.S)
+    if len(prose) < min_chars:
+        return None
+    cut = len(prose) - window
+    head, tail = prose[:cut], prose[cut:]
+    tail = tail.split("\n", 1)[1] if "\n" in tail else tail          # start at a line boundary
+    seen = set(_sentences(head))
+    recent = _sentences(tail)
+    if len(recent) < min_repeats:
+        return None
+    rep = sum(1 for t in recent if t in seen)
+    return (rep, len(recent)) if rep >= min_repeats and rep >= min_ratio * len(recent) else None
 
 
 # ---------------------------------------------------------------- Lean proof -> plain-language explanation (general model)
@@ -396,6 +440,37 @@ def explain_messages(lean_code: str, nl_statement: str = "", lang: str = "fr", p
                   "Rewrite the explanation taking this request into account, still in English: ")
         msgs += [{"role": "assistant", "content": previous}, {"role": "user", "content": follow + request.strip()}]
     return msgs
+
+
+UNDERSTAND_PROMPT = (
+    "You prepare a mathematics problem for an automatic Lean 4 formalization model. That model works best on a "
+    "precise, self-contained statement written in English.\n"
+    "Rewrite the user's request below as ONE precise mathematical statement to prove:\n"
+    "- introduce every object with its type and every hypothesis (for example « Let K be a field and V a "
+    "finite-dimensional vector space over K »);\n"
+    "- if the request names a known theorem or result (in any language), state that theorem in its standard "
+    "textbook form, with all its hypotheses; when a name has several meanings, choose the most elementary one "
+    "(the one taught first at school or university);\n"
+    "- if the request names a result you do not know for sure, or is not a mathematical statement, answer "
+    "exactly UNKNOWN;\n"
+    "- if the request is already a precise statement, translate it into English without changing its meaning "
+    "(keep its numbers, variables and formulas);\n"
+    "- keep formulas in LaTeX between $...$;\n"
+    "- do not prove it, do not name it, do not comment, do not add anything else.\n"
+    "Answer with the statement only.\n"
+    "{profile}"
+    "\nUser request:\n{problem}"
+)
+
+
+def understand_messages(problem: str, profile: str = "") -> list[dict]:
+    """Conversation for the general model: user's words -> precise, self-contained statement (given to the formalizer)."""
+    prof = f"Conventions of the user (respect them): {profile.strip()}\n" if profile.strip() else ""
+    return [{"role": "user", "content": UNDERSTAND_PROMPT.format(profile=prof, problem=problem.strip())}]
+
+
+def is_unknown(understood: str) -> bool:
+    return understood.strip().strip(".").upper() == "UNKNOWN"
 
 
 def formalize_input(problem: str, profile: str = "", previous: str = "", request: str = "") -> str:

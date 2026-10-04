@@ -162,7 +162,7 @@ def test_home_button_starts_the_automatic_chain(win, qtbot, monkeypatch):
     assert calls == [] and "Écrivez d'abord" in home.status.text()
     home.nl.setPlainText("Montrer que 2 + 2 = 4.")
     qtbot.mouseClick(home.big, Qt.LeftButton)
-    assert calls == ["formalizer"]                # chain starts with the translator model
+    assert calls == ["explainer"]                 # chain starts by understanding the problem (then the translator)
     d = win.ctx.pipeline.dossier
     assert d and d.problem == "Montrer que 2 + 2 = 4." and d.events[0].kind == "user"
     assert win.stack.currentWidget() is win.pages["lean"]

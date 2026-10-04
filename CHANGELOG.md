@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.1.1 — 2026-10-04
+
+**Corrections** (signalées avec une vidéo : « théorème de la base incomplète »)
+- **Mauvaise traduction d'un théorème cité par son nom** : le traducteur ne recevait que le nom et a formalisé un
+  autre résultat (« une famille de plus de dim V vecteurs est liée »). Nouvelle étape **« comprendre »** avant la
+  traduction : l'IA généraliste reformule la demande en un énoncé mathématique précis et complet (affiché dans le fil :
+  « Problème compris ainsi »), et c'est ce texte que le traducteur met en Lean. Si la demande ne désigne aucun résultat
+  connu, l'outil s'arrête et demande l'énoncé au lieu d'en inventer un.
+- **Le prouveur tournait en rond sans être arrêté** : il recyclait les mêmes paragraphes avec de petites variations
+  (le détecteur ne voyait que les répétitions exactes), jusqu'à la limite de 16 384 tokens (≈ 6 min par essai).
+  Nouveau détecteur de raisonnement circulaire, réglé sur de vraies réponses du modèle : il laisse au modèle le temps
+  de sortir seul d'une hésitation (cas observé qui finit par une preuve correcte) et coupe au-delà (≈ 6 000 tokens),
+  puis passe à l'essai suivant.
+- Le détecteur de répétitions exactes (depuis la 1.0) pouvait arrêter une **preuve correcte** qui répète plusieurs
+  fois le même bloc de tactiques (cas réel accepté par Lean) : il est désormais plus exigeant à l'intérieur du code.
+
 ## 1.1.0 — 2026-10-04
 
 **Nouveautés**

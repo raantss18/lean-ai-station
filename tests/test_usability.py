@@ -95,6 +95,33 @@ def test_task5_follow_up_request(app_win, qtbot):
     print(f"TASK5 clicks={c.n} proofs={len(d.proofs)}")
 
 
+def test_task6_named_theorem_is_understood_before_translation(app_win, qtbot):
+    """Regression (user video, 2026-10-04): « théorème de la base incomplète » was translated into another theorem.
+    The « comprendre » step now states the named result before the formalizer sees it."""
+    if app_win.ctx.explainer_model() is None or app_win.ctx.formalizer_model() is None:
+        pytest.skip("explainer or formalizer not installed")
+    c = Clicks(qtbot)
+    w = app_win
+    w.ctx.settings.prove_attempts = 2
+    w.navigate("home")
+    w.pages["home"].nl.setPlainText("donne une preuve du théorème de la base incomplète dans un espace vectoriel de "
+                                    "dimension fini")
+    c.click(w.pages["home"].big)
+    p = w.ctx.pipeline
+    qtbot.waitUntil(lambda: p.busy, timeout=10_000)
+    qtbot.waitUntil(lambda: bool(p.dossier and p.dossier.statement) or not p.busy, timeout=900_000)
+    d = p.dossier
+    print(f"TASK6 understood={d.understood!r}\nstatement={d.statement[d.statement.find('theorem'):]!r}")
+    p.cancel()
+    qtbot.waitUntil(lambda: not p.busy, timeout=60_000)
+    u = d.understood.lower()
+    assert "linearly independent" in u and "basis" in u, d.understood
+    sig = d.statement[d.statement.find("theorem"):]
+    assert "LinearIndependent" in sig and ("Basis" in sig or "span" in sig or "⊤" in sig), sig
+    assert "¬" not in sig, sig                                   # not the « too many vectors » theorem
+    assert c.n == 1
+
+
 def test_task2_load_other_model(app_win, qtbot):
     c = Clicks(qtbot)
     w = app_win

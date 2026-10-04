@@ -487,9 +487,9 @@ class LeanPage(QWidget):
                 rows.append(f"<table cellpadding='9' cellspacing='0' style='margin:4px 0 4px 40px;background-color:#22304D'>"
                             f"<tr><td><b>{_('Vous')}</b> <span style='color:{m}'>{when}</span>{tag}<br>{text}</td></tr></table>")
                 continue
-            color = {"statement": "#1D2A40", "proof": "#16301F", "explanation": "#2A2440", "error": "#3A1D20",
+            color = {"understood": "#1D2A40", "statement": "#1D2A40", "proof": "#16301F", "explanation": "#2A2440", "error": "#3A1D20",
                      "info": theme.PANEL}.get(e.kind, theme.PANEL)
-            icon = {"statement": "∀", "proof": "✅", "explanation": "💬", "error": "⚠️", "info": "ℹ️"}.get(e.kind, "•")
+            icon = {"understood": "🧠", "statement": "∀", "proof": "✅", "explanation": "💬", "error": "⚠️", "info": "ℹ️"}.get(e.kind, "•")
             extra = ""
             if e.kind == "statement" and e.ref is not None and e.ref < len(d.statements):
                 code = d.statements[e.ref].code
@@ -665,12 +665,16 @@ class LeanPage(QWidget):
             return
         self._set_running(True)
         self._flush.start()
-        texts = {"statement": (_("① Traduction en Lean…"), _("L'IA écrit l'énoncé en Lean, puis Lean contrôle qu'il est valide.")),
+        texts = {"understand": (_("⓪ Compréhension du problème…"), _("L'IA reformule votre demande en un énoncé "
+                                                                      "mathématique précis, avec toutes ses hypothèses.")),
+                 "statement": (_("① Traduction en Lean…"), _("L'IA écrit l'énoncé en Lean, puis Lean contrôle qu'il est valide.")),
                  "proof": (_("② Recherche de preuve…"), _("L'IA écrit une preuve ; si Lean la refuse, elle corrige et réessaie.")),
                  "explanation": (_("③ Explication…"), _("L'IA explique la preuve en langage courant."))}[stage]
         self._status(*texts)
         self.busy.start(texts[0])
-        if stage == "explanation":
+        if stage == "understand":
+            pass
+        elif stage == "explanation":
             self._expl_live = ""
             self.explain_view.clear()
             self.tabs.setCurrentIndex(2)
@@ -681,7 +685,7 @@ class LeanPage(QWidget):
             self.tabs.setCurrentIndex(3)
 
     def _loading(self, stage: str):
-        name = {"statement": _("du traducteur"), "proof": _("du prouveur"), "explanation": _("de l'explicateur")}[stage]
+        name = {"understand": _("de l'explicateur"), "statement": _("du traducteur"), "proof": _("du prouveur"), "explanation": _("de l'explicateur")}[stage]
         self.busy.start(_("Chargement {name} en mémoire graphique… (environ 5 à 30 s)").format(name=name))
 
     def _attempt_started(self, i: int):

@@ -141,3 +141,71 @@ def test_export_with_explanation_compiles(tmp_path):
                        capture_output=True, text=True, timeout=120)
     assert r.returncode == 0, r.stdout[-800:]
     assert "Explication de la preuve" in doc and "Rédigée par une IA" in doc
+
+
+DATA = Path(__file__).resolve().parent / "data"
+
+
+def test_rambling_detected_on_a_real_prover_answer():
+    """Real Goedel-Prover output (2026-10-04) that recycles the same paragraphs with small variations."""
+    sample = (DATA / "prover_rambling.txt").read_text()
+    text = sample[:12600] + sample[7600:12600] * 3               # the user's run went on like this for 16k tokens
+    assert lc.detect_loop(text) is None                 # not an exact repetition…
+    hit = lc.detect_rambling(text)
+    assert hit and hit[0] >= 12                                  # …but caught by the fuzzy detector
+    assert lc.detect_rambling(sample) is None                    # a shorter circling phase is tolerated (D22)
+
+
+def test_rambling_ignores_repeated_tactics_and_varied_prose():
+    proof = "```lean4\ntheorem t : True := by\n" + "  · norm_num [Nat.mul_mod, Nat.add_mod, Nat.pow_mod]\n" * 600 + "```"
+    assert lc.detect_rambling("Plan: case analysis on n % 11.\n" + proof) is None
+    prose = "\n".join(f"Step {i}: we bound the term number {i} by {i * i + 3} using the inequality of rank {i}."
+                      for i in range(400))
+    assert lc.detect_rambling(prose) is None
+
+
+class RamblingHandler(BaseHTTPRequestHandler):
+    sent = 0
+
+    def log_message(self, *a):
+        pass
+
+    def do_POST(self):  # noqa: N802
+        self.rfile.read(int(self.headers["Content-Length"]))
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.end_headers()
+        text = (DATA / "prover_rambling.txt").read_text()
+        text = text[:12600] + text[7600:12600] * 8          # keeps recycling the same paragraphs
+        try:
+            for i in range(0, len(text), 4):                  # ≈ one token per chunk, like llama-server
+                RamblingHandler.sent += 1
+                self.wfile.write(b"data: " + json.dumps({"choices": [{"delta": {"content": text[i:i + 4]}}]}).encode()
+                                 + b"\n\n")
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+
+def test_chat_stream_stops_rambling(qtbot):
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), RamblingHandler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        s = ChatStream(f"http://127.0.0.1:{httpd.server_address[1]}")
+        with qtbot.waitSignal(s.done, timeout=60000) as blk:
+            s.start([{"role": "user", "content": "x"}], 1.0, 0.95, 16000)
+        d = blk.args[0]
+        assert d["loop"] and d["finish_reason"] == "loop"
+        assert RamblingHandler.sent < 7500                  # stopped well before the end (≈ 13 150 chunks)
+    finally:
+        httpd.shutdown()
+
+
+def test_exact_loop_detector_spares_repeated_tactic_blocks_of_a_correct_proof():
+    """Real answer accepted by Lean (amc12b_2021_p3): its proof repeats a 121-character tactic block 5 times.
+    The 1.0 detector stopped it at 7 600 characters (D22)."""
+    text = (DATA / "prover_accepted_repeated_tactics.txt").read_text()
+    for pos in range(2000, len(text) + 160, 160):
+        assert lc.detect_loop(text[:pos]) is None, pos
+    # a real runaway inside code (imo_1959_p1: `(Nat.gcd_eq_left (Nat.gcd_eq_right …` until the token limit) is caught
+    runaway = "```lean4\ntheorem t : True := by\n  exact " + "(Nat.gcd_eq_left (Nat.gcd_eq_right " * 100
+    assert lc.detect_loop(runaway)

@@ -24,7 +24,8 @@
 
 1. **Décrivez votre problème** en français ou en anglais (formules LaTeX acceptées, comme `$a^2+b^2\ge 2ab$`), ou
    **importez un fichier `.tex`**, puis cliquez sur **« ✨ Prouver un théorème »**.
-2. **Tout s'enchaîne seul** : une IA traduit le problème en énoncé Lean (Lean vérifie qu'il est valide), une autre
+2. **Tout s'enchaîne seul** : une IA reformule d'abord votre demande en énoncé mathématique précis (par exemple
+   « théorème de la base incomplète » → « toute famille libre se complète en une base »), une autre le traduit en énoncé Lean (Lean vérifie qu'il est valide), une autre
    cherche une preuve (si Lean la refuse, elle lit l'erreur et corrige), une troisième l'explique en langage courant.
    Le bon modèle est chargé automatiquement à chaque étape.
 3. **Relisez l'énoncé Lean** affiché dans le fil : Lean prouve exactement ce texte, pas forcément ce que vous aviez en tête.

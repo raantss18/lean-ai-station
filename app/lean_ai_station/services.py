@@ -504,7 +504,6 @@ class ChatStream(QObject):
         self._ttft: float | None = None
         self._chunks = 0
         self._cancelled = False
-        self._tail = ""                 # last characters of the answer, for loop detection
         self._loop: tuple[int, int] | None = None
         self._watch = QTimer(self)
         self._watch.setInterval(5000)
@@ -573,12 +572,13 @@ class ChatStream(QObject):
                         self._ttft = time.monotonic() - self._t0
                     self._chunks += 1
                     self._text.append(piece)
-                    self._tail = (self._tail + piece)[-12000:]
                     self.delta.emit(piece)
                     if self._chunks % 40 == 0 and self._loop is None:
-                        self._loop = leancheck.detect_loop(self._tail)
-                        if self._loop and self.reply is not None:
-                            self.reply.abort()      # the model is going round in circles: stop wasting minutes
+                        self._loop = leancheck.detect_loop("".join(self._text))
+                    if self._chunks % 200 == 0 and self._loop is None and leancheck.detect_rambling("".join(self._text)):
+                        self._loop = (0, 1)         # recycled paragraphs: keep the text as it is
+                    if self._loop and self.reply is not None:
+                        self.reply.abort()          # the model is going round in circles: stop wasting minutes
                 if ch.get("finish_reason"):
                     self._finish = ch["finish_reason"]
 
@@ -1121,20 +1121,35 @@ class Explainer(QObject):
     see DECISIONS D15), so a separate instruction-following model is swapped in for this task."""
     token = Signal(str)
     finished = Signal(bool, str, str)      # ok, explanation (Markdown with $math$), French summary
+    understood = Signal(bool, str)         # ok, precise statement of the user's problem (« comprendre » step)
     infraError = Signal(str, str)
 
     def __init__(self, server: LlamaServer, parent=None):
         super().__init__(parent)
         self.server = server
         self.running = False
+        self.mode = "explain"
         self._stream: ChatStream | None = None
+
+    def understand(self, problem: str, profile: str = ""):
+        """Rewrite the user's request as a precise, self-contained statement before the formalizer sees it."""
+        if self.server.state != LlamaServer.READY:
+            self.infraError.emit("server_down", "")
+            return
+        self.running, self.mode = True, "understand"
+        s = ChatStream(self.server.url, self)
+        self._stream = s
+        s.done.connect(self._done)
+        s.error.connect(self._error)
+        s.start(leancheck.understand_messages(problem, profile), 0.3, 0.9, 600,
+                extra={"chat_template_kwargs": {"enable_thinking": False}})
 
     def start(self, lean_code: str, nl_statement: str = "", lang: str = "fr", profile: str = "",
               previous: str = "", request: str = ""):
         if self.server.state != LlamaServer.READY:
             self.infraError.emit("server_down", "")
             return
-        self.running = True
+        self.running, self.mode = True, "explain"
         s = ChatStream(self.server.url, self)
         self._stream = s
         s.delta.connect(self.token)
@@ -1153,6 +1168,9 @@ class Explainer(QObject):
         self.running = False
         self._stream = None
         text = leancheck.clean_model_text(d["text"])
+        if self.mode == "understand":
+            self.understood.emit(bool(text) and not d.get("loop") and d.get("finish_reason") != "length", text)
+            return
         if not text:
             self.finished.emit(False, "", _("L'IA n'a rien écrit : réessayez."))
             return
@@ -1165,7 +1183,10 @@ class Explainer(QObject):
         was = self.running
         self.running = False
         self._stream = None
-        if kind == "cancelled":
+        if self.mode == "understand":
+            if kind == "cancelled" or was:
+                self.understood.emit(False, "")     # the pipeline then uses the user's own words (or stops if cancelled)
+        elif kind == "cancelled":
             self.finished.emit(False, "", _("Explication arrêtée."))
         elif was:
             self.infraError.emit("server_down" if kind in ("unreachable", "stalled") else "generation", det)

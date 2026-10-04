@@ -175,3 +175,35 @@
 - The shared Mathlib download cache (`~/.cache/mathlib`) is not pruned: other Lean projects of the user use it.
 - Limit: a future Goedel model could expect a different prompt format; the smoke test checks that it loads and
   answers, not its proof quality.
+
+## D22 — Circular reasoning detector (bug report with a screen recording, 2026-10-04)
+- Symptom: Goedel-Prover recycled the same paragraphs with small variations until the 16 384-token limit (≈ 6 min per
+  attempt, 8 attempts planned). `detect_loop` only sees exact repetitions, so it never fired.
+- `detect_rambling`: code blocks removed (proofs legitimately repeat tactic lines); in the last 8 000 characters of
+  prose, the share of sentences (≥ 30 chars, normalised) already written earlier; fires at ≥ 60 % and ≥ 12 sentences,
+  never before 20 000 characters of prose. Checked every 200 tokens in `ChatStream`; the attempt then ends as « loop ».
+- Calibration on 11 real answers collected with the app's server settings (bench corpus, not committed except one
+  excerpt in `tests/data/`): with a first setting (5 000/12 000) the detector fired on 4 answers that had a circling
+  phase, one of which later escaped and **was accepted by Lean** (mathd_numbertheory_353). With the final setting it
+  fires on none of the 19 naturally finished answers (8 more runs of the failing statement were added) and still
+  catches the recorded failure pattern.
+- The same corpus exposed a false positive of the **exact** detector (since 1.0): a correct answer
+  (amc12b_2021_p3, accepted by Lean) repeats a 121-character tactic block 5 times and was stopped at 7 600 characters.
+  Inside a Lean code block (odd number of fences in the whole answer, now passed instead of the last 12 000
+  characters) an exact loop now needs 12 repetitions and 3 000 characters; the real runaway in code
+  (imo_1959_p1, nested `Nat.gcd_eq_left/right` until the token limit) is still stopped, at 6 000 characters.
+
+## D23 — « Comprendre » step before translation
+- Same report: « donne une preuve du théorème de la base incomplète… » was formalised as « more than dim V vectors are
+  dependent » (a different theorem); the formalizer only receives the user's words, and a theorem name gives it little.
+- The general model (Qwen3-8B, already installed for explanations) now rewrites the request as one precise,
+  self-contained statement in English (objects, types, hypotheses; named results stated in textbook form; plain
+  statements only translated) before Goedel-Formalizer. Measured on the CPU: the incomplete basis theorem becomes
+  « …let S be a linearly independent subset of V. Then there exists a basis of V that contains S ». Unknown names
+  (« lemme des bergers ») or non-mathematical text give `UNKNOWN`: the chain stops and asks for the statement instead
+  of inventing one (first prompt version hallucinated a theorem there).
+- The rewritten statement is shown in the thread before the Lean statement, so the user sees the interpretation.
+  Cost: one more model switch (≈ 5 s) and ≈ 5–20 s of generation. Skipped when the explainer is not installed, and for
+  « Corriger l'énoncé » requests (they go to the formalizer with the previous statement, as before).
+- Limit: ambiguous names are resolved by the model (« théorème de Bézout » → curves, not the arithmetic identity); the
+  user corrects it in the thread.

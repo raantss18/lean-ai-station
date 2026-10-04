@@ -10,7 +10,7 @@ from ..errors import friendly
 from ..i18n import _, language
 
 STAGES = ("statement", "proof", "explanation")
-ROLE = {"statement": "formalizer", "proof": "prover", "explanation": "explainer"}
+ROLE = {"understand": "explainer", "statement": "formalizer", "proof": "prover", "explanation": "explainer"}
 
 
 class Pipeline(QObject):
@@ -34,6 +34,7 @@ class Pipeline(QObject):
         ctx.prover.finished.connect(self._proved)
         ctx.prover.infraError.connect(self._infra)
         ctx.explainer.finished.connect(self._explained)
+        ctx.explainer.understood.connect(self._understood)
         ctx.explainer.infraError.connect(self._infra)
         ctx.server.failed.connect(self._load_failed)
 
@@ -99,7 +100,7 @@ class Pipeline(QObject):
         """New dossier from a plain-language problem: translate → prove → explain, without stopping."""
         d = self.new(problem)
         self._event("user", problem, stage="auto")
-        self._run([("statement", ""), ("proof", ""), ("explanation", "")])
+        self._run([("understand", ""), ("statement", ""), ("proof", ""), ("explanation", "")])
         return d
 
     def start_with_statement(self, statement: str, problem: str = "", title: str = ""):
@@ -120,7 +121,7 @@ class Pipeline(QObject):
         if not d.statement:                                # nothing translated yet: treat as the problem itself
             d.problem = (d.problem + "\n" + text).strip() if d.problem else text
             self._event("user", text, stage="statement")
-            self._run([("statement", ""), ("proof", ""), ("explanation", "")])
+            self._run([("understand", ""), ("statement", ""), ("proof", ""), ("explanation", "")])
             return "statement"
         if stage == "auto":
             stage = route(text, d.proof_is_current, bool(d.explanation))
@@ -184,6 +185,9 @@ class Pipeline(QObject):
             return
         stage, req = self.queue.pop(0)
         role = ROLE[stage]
+        if stage == "understand" and (self.ctx.role_model(role) is None or self.ctx.role_model("formalizer") is None):
+            self._next()        # optional step (the formalizer then gets the user's own words, or reports it is missing)
+            return
         if self.ctx.role_model(role) is None:
             self.queue = []
             self._idle()
@@ -209,9 +213,11 @@ class Pipeline(QObject):
             return
         self._pending = False
         d, s, req = self.dossier, self.ctx.settings, self._request
-        if self.stage == "statement":
+        if self.stage == "understand":
+            self.ctx.explainer.understand(d.problem, s.profile)
+        elif self.stage == "statement":
             previous = d.statement if req else ""
-            self.ctx.formalizer.start(d.problem, self._ws, s.translate_attempts, s.compile_timeout_s, name=d.theorem,
+            self.ctx.formalizer.start(d.understood or d.problem, self._ws, s.translate_attempts, s.compile_timeout_s, name=d.theorem,
                                       profile=s.profile, previous=previous, request=req)
         elif self.stage == "proof":
             used = [e for e in closure(self.library, self.library.relevant(d.statement, self._ws.key,
@@ -246,6 +252,20 @@ class Pipeline(QObject):
             self._fail(_("Interrompu : le moteur d'IA ou Lean ne répond plus. Voir le message en haut, puis renvoyez votre demande."))
 
     # ------------------------------------------------------------ results
+    def _understood(self, ok: bool, text: str):
+        if self.stage != "understand":
+            return
+        if ok and leancheck.is_unknown(text):
+            self._fail(_("Je ne reconnais pas d'énoncé mathématique dans votre demande. Écrivez le résultat à prouver "
+                         "avec ses hypothèses, par exemple : « toute famille libre d'un espace vectoriel de dimension "
+                         "finie se complète en une base »."))
+            return
+        if ok and text.strip():
+            self.dossier.understood = text.strip()
+            self._event("understood", _("Problème compris ainsi (c'est ce texte que l'IA traduit en Lean) :") + "\n"
+                        + text.strip())
+        QTimer.singleShot(0, self._next)
+
     def _translated(self, ok: bool, summary: str):
         if self.stage != "statement":
             return
