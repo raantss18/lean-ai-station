@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.3 — 2026-10-04
+
+**Amélioration** (demandée après la 1.1.2)
+- **Lemmes inventés** : quand Lean répond qu'un nom n'existe pas (`unknown constant`, `unknown identifier`, ou
+  « invalid field notation » pour `Real.…`, `Nat.…` en Lean 4.9), l'outil cherche dans la Mathlib de l'espace de
+  travail les déclarations aux noms proches et les donne au prouveur avec leur énoncé, dans le message de correction.
+  Exemple réel : `Polynomial.exists_root_of_odd_degree` → `Polynomial.exists_root_of_degree_eq_one`,
+  `Polynomial.exists_root_of_splits`… L'index (≈ 164 000 déclarations pour Lean 4.9, ≈ 275 000 pour le Lean actuel)
+  se construit en arrière-plan en 5 à 10 s la première fois, puis se recharge en 1 à 2 s.
+
 ## 1.1.2 — 2026-10-04
 
 **Corrections** (signalées : « les 8 essais reproduisent la même erreur », sur deux dossiers)

@@ -19,7 +19,7 @@ from pathlib import Path
 from PySide6.QtCore import QByteArray, QObject, QProcess, QProcessEnvironment, QTimer, QUrl, Signal
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkProxy, QNetworkReply, QNetworkRequest
 
-from . import config, leancheck
+from . import config, leancheck, names
 from .i18n import _
 from .gguf import GGUFError, GGUFInfo, read_info
 from .workspaces import Workspace
@@ -813,6 +813,7 @@ class Prover(QObject):
             self._base = [{"role": "user", "content": leancheck.initial_prompt(self.statement, hint)}]
         self.messages = list(self._base)
         self._round, self._last_feedback = 0, None
+        names.get(ws)                  # start indexing the workspace's declarations (for « unknown constant » errors)
         self._next()
 
     def _restart(self):
@@ -963,6 +964,9 @@ class Prover(QObject):
             return
         a.status = "refusé"
         feedback = leancheck.errors_for_feedback(res.code, res.verdict)
+        idx = names.get(self.ws)
+        if idx is not None:
+            feedback += idx.feedback_note(feedback)      # real Mathlib names close to the invented ones (D25)
         a.errors_text = feedback
         self.attemptUpdated.emit(i)
         if self._round >= self.MAX_CORRECTIONS or feedback == self._last_feedback:
