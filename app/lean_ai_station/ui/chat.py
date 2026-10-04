@@ -174,7 +174,8 @@ class ChatPage(QWidget):
         self.stream.delta.connect(self._delta)
         self.stream.done.connect(self._done)
         self.stream.error.connect(self._error)
-        self.stream.start(msgs, s.temperature, s.top_p, s.max_tokens)
+        self.stream.start(msgs, s.temperature, s.top_p, s.max_tokens,
+                          extra={"repeat_penalty": 1.1, "dry_multiplier": 0.8, "dry_allowed_length": 4})
         self.busy.start("L'IA écrit…")
         self._render_timer.start()
 

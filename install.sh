@@ -9,7 +9,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 export LAS_STATION_DIR="$ROOT"
 LLAMA_COMMIT=436f6f89e1e581249900b37a5b8a12a36a6d0912
-P49=1; CUR=1; QUANTS=(Q4_K_M)
+P49=1; CUR=1; QUANTS=(Q4_K_M formalizer)
 for a in "$@"; do case "$a" in --no-prover49) P49=0 ;; --no-current) CUR=0 ;; --q5) QUANTS+=(Q5_K_M) ;; esac; done
 step() { printf '\n==> %s\n' "$*"; }
 

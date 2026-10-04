@@ -62,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     app.setDesktopFileName("lean-ai-station")
 
     # --- single instance: forward to the running window and quit
-    files = [os.path.abspath(a) for a in argv[1:] if a.endswith(".lean") and os.path.isfile(a)]
+    files = [os.path.abspath(a) for a in argv[1:] if a.endswith((".lean", ".tex")) and os.path.isfile(a)]
     sock = QLocalSocket()
     sock.connectToServer(INSTANCE_NAME)
     if sock.waitForConnected(300):

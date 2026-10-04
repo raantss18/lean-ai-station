@@ -52,6 +52,8 @@ class Settings:
     model_path: str = ""
     workspace: str = ""
     prove_attempts: int = 8
+    translate_attempts: int = 3
+    overleaf_url: str = "http://127.0.0.1"
     compile_timeout_s: int = 180
     autoload_model: bool = True
     chat_system_prompt: str = "Tu es un assistant de mathématiques et de Lean 4. Réponds en français, clairement."
@@ -126,6 +128,13 @@ def load_session() -> dict:
 
 def save_session(data: dict) -> None:
     atomic_write_text(SESSION_FILE, json.dumps(data, indent=1, ensure_ascii=False))
+
+
+def tilde(p: Path | str) -> str:
+    """Display form of a path: ~/… instead of the full home directory."""
+    s = str(p)
+    h = str(HOME)
+    return "~" + s[len(h):] if s == h or s.startswith(h + "/") else s
 
 
 def ensure_dirs() -> None:

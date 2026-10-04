@@ -95,3 +95,48 @@ def test_sorry_answer_rejected(qtbot, fake_server, ws):
     with qtbot.waitSignal(p.finished, timeout=300_000) as blk:
         p.start("theorem t (a b : ℕ) (h : a = b) : b = a := by sorry", ws, 1, config.SamplingSettings(), 240, 16384)
     assert not blk.args[0] and "sorry" in p.attempts[0].summary
+
+
+GOOD_STMT = ("<think>translate</think>\nHere:\n```lean4\nimport Mathlib\n\ntheorem mon_probleme (a b : ℕ) (ha : Even a) "
+             "(hb : Even b) : Even (a + b) := by sorry\n```")
+BAD_STMT = "```lean4\ntheorem mon_probleme (a b : ℕ) (ha : Even a : Even (a + b) := by sorry\n```"
+LOOP_TEXT = "<think>" + ("-- We will use the fact that the determinant is non-negative.\n-- However, A is invertible.\n" * 90)
+
+
+def test_formalizer_retries_until_lean_accepts(qtbot, fake_server, ws):
+    from lean_ai_station.services import Formalizer
+    Fake.requests, Fake.script = [], [("ok", LOOP_TEXT), ("ok", BAD_STMT), ("ok", GOOD_STMT)]
+    f = Formalizer(fake_server, LeanCompiler())
+    with qtbot.waitSignal(f.finished, timeout=300_000) as blk:
+        f.start("Montrer que la somme de deux entiers pairs est paire.", ws, 4, 240)
+    ok, summary = blk.args
+    assert ok, [(a.status, a.summary, a.errors_text[:120]) for a in f.attempts]
+    assert [a.status for a in f.attempts] == ["refusé", "refusé", "accepté"]
+    assert "tournait en rond" in f.attempts[0].summary and "Lean refuse" in f.attempts[1].summary
+    assert f.statement.rstrip().endswith("Even (a + b) := by sorry")
+    assert f.statement.startswith("import Mathlib\nimport Aesop")           # standard header enforced
+    first = Fake.requests[0]["messages"][0]["content"]
+    assert first.startswith("Please autoformalize the following natural language problem statement in Lean 4.")
+    assert "Montrer que la somme de deux entiers pairs est paire.Think before you provide the lean statement." in first
+    assert Fake.requests[0]["top_k"] == 20
+
+
+def test_formalizer_gives_up_but_keeps_last_statement(qtbot, fake_server, ws):
+    from lean_ai_station.services import Formalizer
+    Fake.requests, Fake.script = [], [("ok", BAD_STMT), ("ok", BAD_STMT)]
+    f = Formalizer(fake_server, LeanCompiler())
+    with qtbot.waitSignal(f.finished, timeout=300_000) as blk:
+        f.start("n'importe quoi", ws, 2, 240)
+    ok, summary = blk.args
+    assert not ok and f.statement and f.errors                  # the user can still fix it by hand
+    assert "corrigez-la" in summary
+
+
+def test_prover_restarts_after_a_loop(qtbot, fake_server, ws):
+    Fake.requests, Fake.script = [], [("ok", LOOP_TEXT), ("ok", RIGHT)]
+    p = Prover(fake_server, LeanCompiler())
+    with qtbot.waitSignal(p.finished, timeout=300_000) as blk:
+        p.start("theorem t (a b : ℕ) (h : a = b) : b = a := by sorry", ws, 4, config.SamplingSettings(), 240, 16384)
+    assert blk.args[0]
+    assert "tournait en rond" in p.attempts[0].summary
+    assert len(Fake.requests[1]["messages"]) == 1                # restarted from the original task, no poisoned history

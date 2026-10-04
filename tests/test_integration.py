@@ -161,3 +161,33 @@ def test_full_prove_cycle(qtbot, server, ws, stmt):
     ok, summary = blk.args
     assert ok, (summary, [(a.status, a.summary) for a in p.attempts])
     assert "sorry" not in leancheck.remove_comments(p.final_code)
+
+
+# ---------------------------------------------------------------- natural language → Lean → proof (two models, one GPU)
+FORMALIZER = next(iter(sorted(config.MODELS_DIR.glob("*Formalizer*Q4_K_M.gguf"))), None)
+
+
+@pytest.mark.skipif(not NEED_PROVER or FORMALIZER is None, reason="needs the formalizer + prover models")
+def test_translate_then_prove_with_model_switch(qtbot, ws):
+    from lean_ai_station.services import Formalizer
+    s = LlamaServer()
+    st = config.ServerSettings(port=8793)
+    try:
+        s.start(FORMALIZER, st, 7300)
+        qtbot.waitUntil(lambda: s.state == LlamaServer.READY, timeout=240_000)
+        f = Formalizer(s, LeanCompiler())
+        with qtbot.waitSignal(f.finished, timeout=600_000) as blk:
+            f.start("Montrer que la somme de deux entiers pairs est paire.", ws, 3, 300)
+        assert blk.args[0], [(a.status, a.summary) for a in f.attempts]
+        statement = f.statement
+        assert "Even" in statement and statement.rstrip().endswith(":= by sorry")
+        # switch to the prover on the same GPU (restart with the other model) and prove the translated statement
+        s.start(MODEL, st, 7300)
+        qtbot.waitUntil(lambda: s.state == LlamaServer.READY and s.model_path == MODEL, timeout=240_000)
+        p = Prover(s, LeanCompiler())
+        with qtbot.waitSignal(p.finished, timeout=1_800_000) as blk2:
+            p.start(statement, ws, 8, config.SamplingSettings(), 300, s.plan.ctx)
+        assert blk2.args[0], [(a.status, a.summary) for a in p.attempts]
+        assert "sorry" not in leancheck.remove_comments(p.final_code)
+    finally:
+        s.shutdown_blocking()

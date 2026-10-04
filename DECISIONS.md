@@ -78,3 +78,29 @@
 ## D11 — Lifetime fixes found by the full suite
 - A lambda capturing its emitter (`p.started → lambda: p.processId()`) caused a double delete (segfault) → bound slot.
 - One `ChatStream` per attempt was never freed (GUI RSS +24 MB over a 30-min soak) → streams `deleteLater()` after reporting.
+
+## D12 — Natural language → Lean with Goedel-Formalizer-V2-8B (second model, swapped on the same GPU)
+- Evidence: HF search shows `Goedel-LM/Goedel-Formalizer-V2-8B` (Apache-2.0, same team as the prover, thinks before
+  answering) and community GGUFs; model card gives the exact prompt and sampling (T 0.9, top-k 20, top-p 0.95).
+  Real run (`bench/translate_real.jsonl`): 3/3 problems (French plain text, French+LaTeX, English) compile on the
+  first try in 9.5–21 s.
+- Choice: Q4_K_M GGUF (mradermacher @ 7e10076, sha256 14f0cf69…), prompt verbatim, up to 3 tries until Lean accepts
+  the statement (compiled with `sorry`), standard header enforced. The statement is then shown for **human review**
+  (a statement that compiles can still mean something else) before any proof search.
+- Alternatives: one general chat model to translate (no formalization training, worse); 32B formalizer (does not fit
+  8 GB); keeping both models loaded (2 × 5 GB > 8 GB VRAM) → swap per task (≈ 4 s, `AppContext.ensure_model(role)`).
+
+## D13 — Loop guard
+- Evidence: user screenshot of the chat repeating two comment lines forever; chat had no repetition control.
+- Choice: `leancheck.detect_loop` (shortest period repeated ≥ 5× covering ≥ 600 chars; ≥ 1500 chars when the period is
+  < 60 chars so legitimate `· norm_num` lists are not cut) checked every 40 streamed chunks in `ChatStream`; on a loop the
+  request is aborted, the first occurrence is kept and the prover / formalizer starts a fresh attempt. Chat also sends
+  `repeat_penalty 1.1` and DRY (0.8, length 4). Prover sampling is left exactly as in the Goedel scripts.
+
+## D14 — LaTeX in/out without touching Overleaf's API
+- Input: `texio.extract_statements` (theorem/lemma/proposition/exercise… environments, comments and `\label` removed;
+  fallback = document body). Output: self-contained `.tex` (XeLaTeX, `fvextra` Verbatim — `listings` mis-placed `⟩`
+  under XeLaTeX), verified to compile with the local XeLaTeX (`test_exported_tex_compiles_with_xelatex`).
+- Overleaf: the instance on this machine answers 404 on 127.0.0.1:80 (OVERLEAF_SITE_URL is the Tailscale name) and
+  an API import would need the user's login → no automation; the app exports a file / copies the code and opens the
+  configurable URL (Système → adresse d'Overleaf). Passwords are never requested.

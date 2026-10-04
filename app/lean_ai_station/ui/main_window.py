@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QMainWindow, QStackedWi
 from .. import __version__
 from . import theme
 from .chat import ChatPage
+from .help import HelpDialog
 from .home import HomePage
 from .lean_page import LeanPage
 from .models_page import ModelsPage
@@ -53,6 +54,11 @@ class MainWindow(QMainWindow):
             sl.addWidget(b)
             shortcut(self, keys, lambda k=key: self.navigate(k))
         sl.addStretch(1)
+        self.help_btn = button("❓  Aide", tip="Lean pour les débutants : à quoi ça sert, comment faire (F1)",
+                               slot=self.show_help)
+        self.help_btn.setStyleSheet("text-align: left; padding: 10px 14px; border: none; background: transparent;")
+        sl.addWidget(self.help_btn)
+        shortcut(self, "F1", self.show_help)
         self.side = side
         h.addWidget(side)
 
@@ -146,18 +152,23 @@ class MainWindow(QMainWindow):
                             if g else "GPU : —")
         self.st_net.setText("🔒 Hors-ligne" if self.ctx.settings.offline else "🌐 En ligne")
 
+    def show_help(self):
+        HelpDialog(self).exec()
+
     def dragEnterEvent(self, e):  # noqa: N802
-        if any(u.toLocalFile().endswith(".lean") for u in e.mimeData().urls()):
+        if any(u.toLocalFile().endswith((".lean", ".tex")) for u in e.mimeData().urls()):
             e.acceptProposedAction()
 
     def dropEvent(self, e):  # noqa: N802
-        files = [u.toLocalFile() for u in e.mimeData().urls() if u.toLocalFile().endswith(".lean")]
+        files = [u.toLocalFile() for u in e.mimeData().urls() if u.toLocalFile().endswith((".lean", ".tex"))]
         if files:
-            self.pages["lean"].load_file(files[0])
+            self.open_path(files[0])
 
     def open_path(self, path: str):
         if path.endswith(".lean"):
             self.pages["lean"].load_file(path)
+        elif path.endswith(".tex"):
+            self.pages["lean"].load_tex(path)
 
     def resizeEvent(self, e):  # noqa: N802
         super().resizeEvent(e)

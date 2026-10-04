@@ -70,6 +70,12 @@ MESSAGES = {
         "Mode hors-ligne actif",
         "Le téléchargement est désactivé en mode hors-ligne. Désactivez-le dans « Système » si vous avez Internet.",
         [("Ouvrir Système", "goto_system")], "info"),
+    "no_formalizer": Friendly(
+        "Le traducteur français → Lean n'est pas installé",
+        "Pour écrire votre problème en français, il faut le modèle « Goedel-Formalizer » (≈ 5 Go). "
+        "Avec Internet : ouvrez « Modèles » → téléchargez « mradermacher/Goedel-Formalizer-V2-8B-GGUF ». "
+        "Sinon, écrivez directement l'énoncé en Lean dans la zone ②.",
+        [("Ouvrir Modèles", "goto_models")], "warn"),
     "statement": Friendly(
         "Énoncé incomplet",
         "", [], "warn"),

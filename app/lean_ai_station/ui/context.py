@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Signal
 from .. import config
 from ..errors import Friendly, friendly
 from ..gguf import GGUFError, find_models, read_info
-from ..services import GpuMonitor, LeanCompiler, LlamaServer, Net, Prover
+from ..services import Formalizer, GpuMonitor, LeanCompiler, LlamaServer, Net, Prover
 from ..workspaces import Workspace, all_workspaces
 
 
@@ -38,7 +38,9 @@ class AppContext(QObject):
     modelsChanged = Signal()
     workspacesChanged = Signal()
     settingsChanged = Signal()
-    proveRequest = Signal(str)            # statement to prove immediately
+    proveRequest = Signal(str, str)       # Lean statement to prove immediately, optional informal text
+    texRequest = Signal(str)              # path of a .tex file to import
+    translateRequest = Signal(str)        # problem in natural language: translate to Lean (user then reviews)
 
     def __init__(self, settings: config.Settings, session: dict):
         super().__init__()
@@ -51,6 +53,8 @@ class AppContext(QObject):
         self.compiler = LeanCompiler(self)       # used by the prove loop
         self.verifier = LeanCompiler(self)       # used by « Vérifier »
         self.prover = Prover(self.server, self.compiler, self)
+        self.translator_compiler = LeanCompiler(self)
+        self.formalizer = Formalizer(self.server, self.translator_compiler, self)
         self.gpu = GpuMonitor(self)
         self.models: list = []                   # GGUFInfo or (Path, error)
         self.workspaces: list[Workspace] = []
@@ -139,9 +143,22 @@ class AppContext(QObject):
                 return w
         return None
 
+    @staticmethod
+    def is_formalizer(path: Path | str) -> bool:
+        return "formalizer" in Path(path).name.lower()
+
+    def formalizer_model(self) -> Path | None:
+        """The natural-language → Lean translation model, if installed."""
+        c = [m for m in self.models if not isinstance(m, tuple) and self.is_formalizer(m.path)]
+        return max(c, key=lambda m: ("Q4_K_M" in m.path.name, -m.size)).path if c else None
+
+    def role_model(self, role: str) -> Path | None:
+        return self.formalizer_model() if role == "formalizer" else self.default_model()
+
     def default_model(self) -> Path | None:
-        good = [m for m in self.models if not isinstance(m, tuple)]
-        if self.settings.model_path and Path(self.settings.model_path).exists():
+        good = [m for m in self.models if not isinstance(m, tuple) and not self.is_formalizer(m.path)]
+        if (self.settings.model_path and Path(self.settings.model_path).exists()
+                and not self.is_formalizer(self.settings.model_path)):
             return Path(self.settings.model_path)
         vram = self.vram_total()
         goedel = [m for m in good if "goedel" in m.path.name.lower()]
@@ -187,8 +204,9 @@ class AppContext(QObject):
         if self.server.state == LlamaServer.READY and self.server.model_path == path:
             self._flush_ready()
             return
-        self.settings.model_path = str(path)
-        self.save_later()
+        if not self.is_formalizer(path):           # the prover stays the default model across sessions
+            self.settings.model_path = str(path)
+            self.save_later()
         self.with_gpu_info(lambda: self._start_server(path))
 
     def with_gpu_info(self, then, timeout_ms: int = 3000):
@@ -220,11 +238,19 @@ class AppContext(QObject):
         else:
             self.server.start(path, self.settings.server, self.vram_free_for_model())
 
-    def ensure_model(self, then):
-        if self.server.state == LlamaServer.READY:
+    def ensure_model(self, then, role: str = "prover"):
+        """Run `then` once the model for `role` ('prover' | 'formalizer') is loaded, switching models if needed."""
+        target = self.role_model(role)
+        if target is None:
+            if role == "formalizer":
+                self.banner.emit(friendly("no_formalizer"), "")
+            else:
+                self.load_model(then=then)       # reports « Aucun modèle installé »
+            return
+        if self.server.state == LlamaServer.READY and self.server.model_path == target:
             then()
         else:
-            self.load_model(then=then)
+            self.load_model(target, then=then)
 
     def _flush_ready(self):
         cbs, self._after_ready = self._after_ready, []

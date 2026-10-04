@@ -278,3 +278,47 @@ def errors_for_feedback(code: str, verdict: Verdict) -> str:
         return get_error_str(code, [e.as_goedel() for e in verdict.errors])
     # non-error rejection: explain in Goedel style without positions
     return "\nError 1:\n\nError Message: " + (verdict.feedback_en or "The proof was rejected.") + "\n"
+
+
+# ---------------------------------------------------------------- natural language -> Lean (Goedel-Formalizer-V2)
+FORMALIZE_TEMPLATE = (
+    "Please autoformalize the following natural language problem statement in Lean 4. "
+    "Use the following theorem name: {name}\n"
+    "The natural language statement is: \n"
+    "{text}"
+    "Think before you provide the lean statement."
+)   # verbatim from the Goedel-Formalizer-V2-8B model card (including the missing newline before « Think »)
+DEFAULT_THEOREM_NAME = "mon_probleme"
+
+
+def formalize_prompt(text: str, name: str = DEFAULT_THEOREM_NAME) -> str:
+    return FORMALIZE_TEMPLATE.format(name=name, text=text.strip())
+
+
+def normalize_formal_statement(code: str) -> str:
+    """Model output -> a Lean file with the standard header and a single `theorem … := by sorry`."""
+    std_open = GOEDEL_HEADER.split("open ")[1].split("\n")[0].strip()     # "BigOperators Real Nat Topology Rat"
+    lines = [l for l in code.replace("\r\n", "\n").split("\n")
+             if not re.match(r"\s*(import\s|set_option\s+maxHeartbeats)", l)
+             and l.strip() != "open " + std_open]
+    return prepare_statement("\n".join(lines).strip())
+
+
+def detect_loop(text: str, min_chars: int = 600, min_reps: int = 5, max_unit: int = 1500) -> tuple[int, int] | None:
+    """Detect a generation stuck repeating the same block: returns (period, repetitions) or None.
+
+    The end of `text` must be one block repeated ≥ 5 times. The *shortest* such period decides: a short period
+    (< 60 chars, e.g. a repeated tactic line like `· norm_num`) needs 1500 characters of evidence because legitimate
+    proofs repeat such lines; a longer block needs 600."""
+    n = len(text)
+    for unit in range(4, min(max_unit, n // min_reps) + 1):
+        if text[-unit:] != text[-2 * unit:-unit]:
+            continue
+        reps = 2
+        while (reps + 1) * unit <= n and text[-(reps + 1) * unit:-reps * unit] == text[-unit:]:
+            reps += 1
+        if reps < min_reps:
+            continue
+        need = min_chars if unit >= 60 else 2 * min_chars + 300
+        return (unit, reps) if reps * unit >= need else None
+    return None

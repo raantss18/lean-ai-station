@@ -67,3 +67,14 @@ Workspace: lean4web MathlibDemo (Lean 4.29) — run before lean-prover49 finishe
 
 ## Chosen defaults (Serveur → « Valeurs recommandées »)
 `-ngl 99 -c 24576 -fa on -ctk q8_0 -ctv q8_0 -b 2048 -ub 512 -np 1`, sampling T=1.0, top-p 0.95 (Goedel), max 16384 tokens/answer.
+
+## 6. Natural language → Lean (Goedel-Formalizer-V2-8B Q4_K_M, `bench/translate_real.jsonl`)
+| Problem (as typed) | Result | Time |
+|---|---|---|
+| « Montrer que la somme de deux entiers pairs est paire. » | `∀ (a b : ℤ), Even a → Even b → Even (a + b)`, compiles, try 1 | 21.1 s (incl. model load) |
+| « Soient $a$ et $b$ deux réels. Montrer que $2ab \le a^2 + b^2$. » | `(a b : ℝ) : 2 * a * b ≤ a^2 + b^2`, compiles, try 1 | 9.5 s |
+| « Prove that for every natural number n, n(n+1)(n+2) is divisible by 6. » | `∀ n : ℕ, 6 ∣ n * (n + 1) * (n + 2)`, compiles, try 1 | 9.7 s |
+
+Generation ≈ 44 tok/s, 310–340 tokens per translation. Switching prover ↔ formalizer on the 8 GB GPU: server restart ≈ 4–8 s.
+Whether a *compiling* translation is *faithful* is not measured here (only a human can judge): that is why the UI
+forces a « relisez » step.

@@ -1,0 +1,56 @@
+% !TEX program = xelatex
+% Document généré par Lean AI Station. Compiler avec XeLaTeX (sur Overleaf : Menu → Compilateur → XeLaTeX).
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{fontspec}
+\setmonofont{DejaVu Sans Mono}[Scale=MatchLowercase]
+\usepackage[french]{babel}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{fvextra}
+\usepackage[dvipsnames]{xcolor}
+\theoremstyle{plain}
+\newtheorem{theorem}{Théorème}
+
+\title{Énoncé et preuve vérifiée par Lean}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Énoncé}
+\begin{theorem}
+Montrer que la somme de deux entiers pairs est paire.
+\end{theorem}
+
+\section*{Énoncé formalisé en Lean 4}
+\begin{Verbatim}[breaklines=true,frame=single,fontsize=\small,rulecolor=\color{black!25}]
+theorem mon_probleme : ∀ a b : ℤ, Even a → Even b → Even (a + b) := by sorry
+\end{Verbatim}
+
+\section*{Preuve formelle}
+Preuve vérifiée par Lean (Prouveur, Lean 4.9.0-rc1) le 04/10/2026.
+\begin{Verbatim}[breaklines=true,frame=single,fontsize=\small,rulecolor=\color{black!25}]
+import Mathlib
+import Aesop
+
+set_option maxHeartbeats 400000
+
+open BigOperators Real Nat Topology Rat
+
+theorem mon_probleme : ∀ a b : ℤ, Even a → Even b → Even (a + b) := by
+  have h_main : ∀ a b : ℤ, Even a → Even b → Even (a + b) := by
+    intro a b h_even_a h_even_b
+    
+    cases' h_even_a with k hk
+    cases' h_even_b with m hm
+    
+    use k + m
+    
+    <;> simp [hk, hm, Int.mul_add, Int.add_mul]
+    <;> ring
+    <;> omega
+  exact h_main
+\end{Verbatim}
+
+\end{document}

@@ -70,6 +70,20 @@ batch, top-p…), mismatched « Réparer »/« Recompiler » wording. All visibl
 | git repository, clean history, Apache-2.0 | `LICENSE`, `NOTICE` | ✅ |
 | reproducible install | `install.sh` (pinned llama.cpp commit, pinned model revision + sha256, pinned Mathlib commits) | ✅ |
 
+## F. Natural language → Lean, LaTeX, loop guard (added 2026-10-04)
+| Item | Evidence | Status |
+|---|---|---|
+| Plain-language problem → Lean statement checked by Lean (real models, 3 problems incl. French + LaTeX + English) | `bench/translate_real.jsonl`: 3/3 compile at try 1, 9.5–21 s | ✅ |
+| Two models on one 8 GB GPU: translate → switch → prove, real | `test_integration.py::test_translate_then_prove_with_model_switch` | ✅ |
+| Formalizer prompt is the model-card prompt; retries on invalid Lean / loops; keeps last statement when giving up | `test_leancheck.py::test_formalize_prompt_is_the_model_card_prompt`, `test_prover_fake.py::test_formalizer_*` (real Lean 4.9) | ✅ |
+| Mandatory human review step in the UI | `docs/screenshots/08_enonce_a_relire.png`; `test_gui.py::test_translate_needs_text_and_model` | ✅ |
+| Loop guard (chat screenshot reported by the user) | `test_tex_and_loop.py::test_chat_stream_stops_a_loop` (stops after <1500 of 5000 chunks), `test_prover_restarts_after_a_loop`, `test_loop_detector` (no false positive on 60 × `· norm_num`) | ✅ |
+| .tex import (theorems/lemmas/exercises, comments ignored, choice dialog) | `test_extract_statements_from_tex`, `test_import_tex_fills_problem_box` | ✅ |
+| LaTeX export compiles (XeLaTeX), cannot be broken by proof content | `test_exported_tex_compiles_with_xelatex`, `test_export_escapes_plain_text_and_keeps_latex`; real export `docs/exemple_export.pdf` | ✅ |
+| Beginner help (Lean in 2 minutes, glossary, why review) | `docs/screenshots/06b_aide.png`, `test_help_dialog_opens` | ✅ |
+| Overleaf | exported file / copied code / configurable URL. **Not automated**: the local instance answers 404 on 127.0.0.1:80 and an API import would need the user's login | ⚠️ by design |
+| Faithfulness of a *compiling* translation | cannot be measured automatically → forced human review | ⚠️ limit |
+
 ## Defects found by this acceptance loop and fixed (see DECISIONS D8–D11)
 1. Restart after a server crash loaded the model on the CPU (stale VRAM snapshot) → free VRAM computed excluding our own process.
 2. Race: model load before the first `nvidia-smi` reading → CPU → load now waits for a GPU snapshot.

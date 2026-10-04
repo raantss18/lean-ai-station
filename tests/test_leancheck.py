@@ -118,3 +118,19 @@ def test_error_string_identical_to_goedel():
               {"pos": {"line": 20, "column": 2}, "endPos": None, "data": "unknown identifier"}]
     for thres in (True, False):
         assert lc.get_error_str(code, errors, thres) == ref(code, errors, thres)
+
+
+def test_formalize_prompt_is_the_model_card_prompt():
+    p = lc.formalize_prompt("Prove that 3 cannot be written as the sum of two cubes.", "test_problem")
+    assert p == ("Please autoformalize the following natural language problem statement in Lean 4. "
+                 "Use the following theorem name: test_problem\nThe natural language statement is: \n"
+                 "Prove that 3 cannot be written as the sum of two cubes.Think before you provide the lean statement.")
+
+
+def test_normalize_formal_statement_enforces_standard_header():
+    out = lc.normalize_formal_statement("import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\n"
+                                        "open BigOperators Real Nat Topology Rat\nopen Finset\n\n"
+                                        "theorem mon_probleme : 1 = 1 := by sorry")
+    assert out.count("open BigOperators Real Nat Topology Rat") == 1 and "open Finset" in out
+    assert "maxHeartbeats 400000" in out and "maxHeartbeats 0" not in out
+    assert out.endswith("theorem mon_probleme : 1 = 1 := by sorry\n")

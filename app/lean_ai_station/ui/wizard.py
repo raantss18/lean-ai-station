@@ -70,7 +70,7 @@ class Wizard(QWidget):
                            "Comptez environ une minute. Rien à installer ni à configurer à la main.", wrap=True))
         wl.addWidget(label("• Un modèle d'IA spécialisé (Goedel-Prover) écrit des preuves Lean.\n"
                            "• Lean vérifie chaque preuve : seules les preuves correctes sont acceptées.\n"
-                           "• Tout reste sur cet ordinateur ; aucune donnée n'est envoyée.", wrap=True))
+                           "• Rien n'est envoyé sur Internet : l'IA fonctionne grâce à la carte graphique de cet ordinateur.", wrap=True))
         self.pages.addWidget(w)
         # 1 detection
         d = QWidget()

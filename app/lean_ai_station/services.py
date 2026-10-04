@@ -503,16 +503,20 @@ class ChatStream(QObject):
         self._ttft: float | None = None
         self._chunks = 0
         self._cancelled = False
+        self._tail = ""                 # last characters of the answer, for loop detection
+        self._loop: tuple[int, int] | None = None
         self._watch = QTimer(self)
         self._watch.setInterval(5000)
         self._watch.timeout.connect(self._check_stall)
         self._last = 0.0
         self.stall_s = 180
 
-    def start(self, messages: list[dict], temperature: float, top_p: float, max_tokens: int):
+    def start(self, messages: list[dict], temperature: float, top_p: float, max_tokens: int,
+              extra: dict | None = None):
         body = {"messages": messages, "stream": True, "temperature": temperature, "top_p": top_p,
                 "max_tokens": max_tokens, "cache_prompt": True, "stream_options": {"include_usage": True},
                 "seed": random.randint(0, 2**31 - 1)}   # explicit per-request seed (server already varies; kept explicit)
+        body.update(extra or {})
         req = QNetworkRequest(QUrl(self.base_url + "/v1/chat/completions"))
         req.setHeader(QNetworkRequest.ContentTypeHeader, "application/json")
         req.setTransferTimeout(0)
@@ -559,6 +563,8 @@ class ChatStream(QObject):
             if "timings" in d:
                 self._timings = d["timings"]
             for ch in d.get("choices") or []:
+                if self._loop is not None:
+                    break                       # loop already detected: ignore what is still in flight
                 delta = ch.get("delta") or {}
                 piece = (delta.get("reasoning_content") or "") + (delta.get("content") or "")
                 if piece:
@@ -566,7 +572,12 @@ class ChatStream(QObject):
                         self._ttft = time.monotonic() - self._t0
                     self._chunks += 1
                     self._text.append(piece)
+                    self._tail = (self._tail + piece)[-12000:]
                     self.delta.emit(piece)
+                    if self._chunks % 40 == 0 and self._loop is None:
+                        self._loop = leancheck.detect_loop(self._tail)
+                        if self._loop and self.reply is not None:
+                            self.reply.abort()      # the model is going round in circles: stop wasting minutes
                 if ch.get("finish_reason"):
                     self._finish = ch["finish_reason"]
 
@@ -588,6 +599,15 @@ class ChatStream(QObject):
         rest = self._buf.decode("utf-8", "replace")
         self.reply = None
         r.deleteLater()
+        if self._loop is not None and not self._cancelled:
+            unit, reps = self._loop
+            text = self.text
+            text = text[: len(text) - unit * (reps - 1)]       # keep the first occurrence of the repeated block
+            secs = time.monotonic() - self._t0
+            self.done.emit({"text": text, "finish_reason": "loop", "loop": True, "tokens": self._chunks,
+                            "ttft": self._ttft, "tps": self._chunks / max(secs - (self._ttft or 0), 1e-6),
+                            "seconds": secs, "prompt_tokens": 0})
+            return
         if self._cancelled:
             self.error.emit("cancelled", "")
             return
@@ -845,6 +865,12 @@ class Prover(QObject):
         a.raw = d["text"]
         a.gen_seconds, a.tokens, a.tps, a.ttft, a.finish_reason = d["seconds"], d["tokens"], d["tps"], d["ttft"], d["finish_reason"]
         code = leancheck.extract_code(a.raw)
+        if d.get("loop"):
+            a.status, a.summary = "refusé", "L'IA tournait en rond : essai interrompu, nouvel essai."
+            self.attemptUpdated.emit(i)
+            self.messages = self.messages[:1]
+            QTimer.singleShot(0, self._next)
+            return
         if code is None:
             a.status = "refusé"
             a.summary = ("Réponse trop longue, coupée avant le code Lean." if a.finish_reason == "length"
@@ -897,4 +923,142 @@ class Prover(QObject):
             {"role": "assistant", "content": a.raw},
             {"role": "user", "content": leancheck.correction_prompt(i, feedback)},
         ]
+        QTimer.singleShot(0, self._next)
+
+
+# ---------------------------------------------------------------- natural language -> Lean statement
+class Formalizer(QObject):
+    """Translate a problem written in natural language (LaTeX allowed) into a Lean `theorem … := by sorry`.
+
+    Each try = one Goedel-Formalizer generation + a Lean compile of the statement (with `sorry`); stops at the
+    first statement that Lean accepts (up to `tries`). Same signals as `Prover` so the UI can share its widgets."""
+    attemptStarted = Signal(int)
+    token = Signal(int, str)
+    attemptUpdated = Signal(int)
+    finished = Signal(bool, str)          # all statements compiled, French summary
+    infraError = Signal(str, str)
+
+    def __init__(self, server: LlamaServer, compiler: LeanCompiler, parent=None):
+        super().__init__(parent)
+        self.server, self.compiler = server, compiler
+        self.attempts: list[Attempt] = []
+        self.running = False
+        self.n = 3
+        self.statement = ""          # best statement so far (full Lean file with `:= by sorry`)
+        self.errors: list[leancheck.LeanMessage] = []
+        self._stream: ChatStream | None = None
+        self._mine = False
+        compiler.finished.connect(self._compiled)
+
+    def start(self, text: str, ws: Workspace, tries: int, timeout_s: int):
+        self.text, self.ws, self.n, self.timeout_s = text.strip(), ws, max(1, tries), timeout_s
+        self.attempts, self.statement, self.errors, self.running = [], "", [], True
+        self._next()
+
+    def cancel(self):
+        if not self.running:
+            return
+        self.running = False
+        if self._stream:
+            self._stream.cancel()
+        if self._mine and self.compiler.busy:
+            self.compiler.cancel()
+        if self.attempts and self.attempts[-1].status in ("génération", "compilation"):
+            self.attempts[-1].status = "annulé"
+            self.attemptUpdated.emit(len(self.attempts) - 1)
+        self.finished.emit(False, "Traduction arrêtée.")
+
+    def _next(self):
+        if not self.running:
+            return
+        if len(self.attempts) >= self.n:
+            self.running = False
+            self.finished.emit(False, "La traduction ne compile pas encore : corrigez-la dans l'éditeur "
+                                      "ou reformulez le problème.")
+            return
+        if self.server.state != LlamaServer.READY:
+            self.running = False
+            self.infraError.emit("server_down", "")
+            return
+        a = Attempt(len(self.attempts), "translation")
+        self.attempts.append(a)
+        self.attemptStarted.emit(a.index)
+        s = ChatStream(self.server.url, self)
+        self._stream = s
+        s.delta.connect(self._delta)
+        s.done.connect(self._generated)
+        s.error.connect(self._gen_error)
+        s.start([{"role": "user", "content": leancheck.formalize_prompt(self.text)}], 0.9, 0.95, 12000,
+                extra={"top_k": 20})        # sampling from the Goedel-Formalizer-V2 model card
+
+    def _delta(self, t: str):
+        if self.attempts:
+            self.attempts[-1].raw += t
+            self.token.emit(len(self.attempts) - 1, t)
+
+    def _gen_error(self, kind: str, det: str):
+        self._stream = None
+        if kind == "cancelled" or not self.running:
+            return
+        a = self.attempts[-1]
+        a.status, a.summary = "erreur", "La traduction a échoué."
+        self.attemptUpdated.emit(a.index)
+        self.running = False
+        self.infraError.emit("server_down" if kind in ("unreachable", "stalled") else "generation", det)
+
+    def _generated(self, d: dict):
+        self._stream = None
+        if not self.running:
+            return
+        i = len(self.attempts) - 1
+        a = self.attempts[i]
+        a.raw = d["text"]
+        a.gen_seconds, a.tokens, a.tps, a.ttft, a.finish_reason = d["seconds"], d["tokens"], d["tps"], d["ttft"], d["finish_reason"]
+        code = None if d.get("loop") else leancheck.extract_code(a.raw)
+        if code is None:
+            a.status = "refusé"
+            a.summary = ("L'IA tournait en rond : nouvel essai." if d.get("loop") else
+                         "Pas d'énoncé Lean dans la réponse : nouvel essai.")
+            self.attemptUpdated.emit(i)
+            QTimer.singleShot(0, self._next)
+            return
+        try:
+            a.code = leancheck.normalize_formal_statement(code)
+        except leancheck.StatementError as e:
+            a.status, a.summary = "refusé", f"{e} Nouvel essai."
+            self.attemptUpdated.emit(i)
+            QTimer.singleShot(0, self._next)
+            return
+        self.statement = a.code
+        a.status = "compilation"
+        self.attemptUpdated.emit(i)
+        self._mine = True
+        self.compiler.compile(a.code, self.ws, self.timeout_s, None)
+
+    def _compiled(self, res: CompileResult):
+        if not self._mine:
+            return
+        self._mine = False
+        if not self.running or not self.attempts:
+            return
+        i = len(self.attempts) - 1
+        a = self.attempts[i]
+        a.compile_seconds = res.seconds
+        if res.infra_error and not res.verdict.errors:
+            a.status, a.summary = "erreur", res.verdict.summary
+            self.attemptUpdated.emit(i)
+            self.running = False
+            self.infraError.emit("workspace", res.infra_error)
+            return
+        self.errors = res.verdict.errors
+        if not res.verdict.errors and not res.timed_out:
+            a.status, a.summary = "accepté", "Énoncé valide en Lean (à relire)"
+            self.attemptUpdated.emit(i)
+            self.running = False
+            self.finished.emit(True, "Énoncé traduit : Lean le comprend. Relisez-le avant de prouver.")
+            return
+        a.status = "refusé"
+        a.summary = "Lean refuse cette traduction : nouvel essai." if i + 1 < self.n else "Lean refuse cette traduction."
+        a.errors_text = "\n".join(f"ligne {m.line} : {m.text}" for m in res.verdict.errors)
+        self.attemptUpdated.emit(i)
         QTimer.singleShot(0, self._next)

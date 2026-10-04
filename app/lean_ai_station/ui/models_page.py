@@ -37,7 +37,7 @@ class ModelsPage(QWidget):
                               slot=lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(config.MODELS_DIR)))))
         head.addWidget(button("Actualiser", tip="Relire le dossier des modèles", slot=lambda: ctx.refresh_models()))
         lay.addLayout(head)
-        lay.addWidget(label(f"Dossier : {config.MODELS_DIR}", "Muted"))
+        lay.addWidget(label(f"Dossier : {config.tilde(config.MODELS_DIR)}", "Muted"))
 
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(["Nom", "Quantification", "Taille", "Carte graphique", "État"])
@@ -135,7 +135,8 @@ class ModelsPage(QWidget):
                 st = ""
                 if loaded and Path(loaded) == m.path:
                     st = "🟢 Chargé" if self.ctx.server.state == "ready" else "🟡 Chargement…"
-                vals = [m.path.name, m.quant, human(m.size), fit, st]
+                role = "traduction texte → Lean" if self.ctx.is_formalizer(m.path) else "preuves"
+                vals = [f"{m.path.name}  ·  {role}", m.quant, human(m.size), fit, st]
             for c, v in enumerate(vals):
                 it = QTableWidgetItem(v)
                 it.setData(Qt.UserRole, str(path))

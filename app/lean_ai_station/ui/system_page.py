@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 
 from PySide6.QtCore import QProcess, QProcessEnvironment, Qt
-from PySide6.QtWidgets import (QCheckBox, QGridLayout, QHBoxLayout, QPlainTextEdit, QProgressBar, QScrollArea,
+from PySide6.QtWidgets import (QLineEdit, QCheckBox, QGridLayout, QHBoxLayout, QPlainTextEdit, QProgressBar, QScrollArea,
                                QSpinBox, QVBoxLayout, QWidget)
 
 from .. import config
@@ -80,6 +80,13 @@ class SystemPage(QWidget):
         tr.addWidget(self.timeout)
         tr.addStretch(1)
         n.lay.addLayout(tr)
+        orow = QHBoxLayout()
+        orow.addWidget(label("Adresse de votre Overleaf (optionnel) :"))
+        self.overleaf = QLineEdit(ctx.settings.overleaf_url)
+        self.overleaf.setToolTip("Utilisée par « LaTeX ▾ → Ouvrir Overleaf » après une preuve réussie.")
+        self.overleaf.editingFinished.connect(self._overleaf)
+        orow.addWidget(self.overleaf, 1)
+        n.lay.addLayout(orow)
         n.lay.addWidget(button("Relancer l'assistant de démarrage", tip="Refaire la configuration guidée",
                                slot=lambda: ctx.navigate.emit("wizard")))
         grid.addWidget(n, 1, 0, 1, 2)
@@ -128,6 +135,10 @@ class SystemPage(QWidget):
     def _sync_offline(self):
         self.offline.setChecked(self.ctx.settings.offline)
 
+    def _overleaf(self):
+        self.ctx.settings.overleaf_url = self.overleaf.text().strip() or "http://127.0.0.1"
+        self.ctx.save_later()
+
     def _timeout(self, v):
         self.ctx.settings.compile_timeout_s = v
         self.ctx.save_later()
@@ -166,7 +177,7 @@ class SystemPage(QWidget):
         ctx = self.ctx
         out = []
         b = llama_bin("llama-server")
-        out.append((b.exists(), "Moteur d'IA (llama-server)", str(b) if b.exists() else "Programme introuvable.",
+        out.append((b.exists(), "Moteur d'IA (llama-server)", config.tilde(b) if b.exists() else "Programme introuvable.",
                     None if b.exists() else "Recompiler", "build_llama"))
         gpu = ctx.gpu_ok
         out.append((gpu is not False, "Carte graphique NVIDIA",
@@ -175,9 +186,15 @@ class SystemPage(QWidget):
                     None, None))
         good = [m for m in ctx.models if not isinstance(m, tuple)]
         bad = [m for m in ctx.models if isinstance(m, tuple)]
-        out.append((bool(good), "Modèle d'IA installé",
+        good = [m for m in good if not ctx.is_formalizer(m.path)]
+        out.append((bool(good), "Modèle d'IA installé (prouveur)",
                     f"{len(good)} modèle(s) prêt(s)" + (f", {len(bad)} illisible(s)" if bad else "") if good else
                     "Aucun modèle utilisable.", None if good else "Ouvrir Modèles", "goto_models"))
+        fm = ctx.formalizer_model()
+        out.append((fm is not None, "Traducteur français → Lean (Goedel-Formalizer)",
+                    fm.name if fm else "Absent : sans lui, écrivez l'énoncé directement en Lean. Avec Internet : "
+                    "« Modèles » → mradermacher/Goedel-Formalizer-V2-8B-GGUF.",
+                    None if fm else "Ouvrir Modèles", "goto_models"))
         for w in ctx.workspaces:
             if w.readonly:
                 continue
