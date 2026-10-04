@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Signal
 from .. import config
 from ..errors import Friendly, friendly
 from ..gguf import GGUFError, find_models, read_info
-from ..services import Formalizer, GpuMonitor, LeanCompiler, LlamaServer, Net, Prover
+from ..services import Explainer, Formalizer, GpuMonitor, LeanCompiler, LlamaServer, Net, Prover
 from ..workspaces import Workspace, all_workspaces
 
 
@@ -55,6 +55,7 @@ class AppContext(QObject):
         self.prover = Prover(self.server, self.compiler, self)
         self.translator_compiler = LeanCompiler(self)
         self.formalizer = Formalizer(self.server, self.translator_compiler, self)
+        self.explainer = Explainer(self.server, self)
         self.gpu = GpuMonitor(self)
         self.models: list = []                   # GGUFInfo or (Path, error)
         self.workspaces: list[Workspace] = []
@@ -152,13 +153,28 @@ class AppContext(QObject):
         c = [m for m in self.models if not isinstance(m, tuple) and self.is_formalizer(m.path)]
         return max(c, key=lambda m: ("Q4_K_M" in m.path.name, -m.size)).path if c else None
 
+    @staticmethod
+    def is_explainer(path: Path | str) -> bool:
+        n = Path(path).name.lower()
+        return "qwen3" in n and "goedel" not in n
+
+    def explainer_model(self) -> Path | None:
+        """General instruction-following model used to explain proofs in French."""
+        c = [m for m in self.models if not isinstance(m, tuple) and self.is_explainer(m.path)]
+        return max(c, key=lambda m: ("Q4_K_M" in m.path.name, -m.size)).path if c else None
+
     def role_model(self, role: str) -> Path | None:
-        return self.formalizer_model() if role == "formalizer" else self.default_model()
+        if role == "formalizer":
+            return self.formalizer_model()
+        if role == "explainer":
+            return self.explainer_model()
+        return self.default_model()
 
     def default_model(self) -> Path | None:
-        good = [m for m in self.models if not isinstance(m, tuple) and not self.is_formalizer(m.path)]
+        good = [m for m in self.models if not isinstance(m, tuple) and not self.is_formalizer(m.path)
+                and not self.is_explainer(m.path)]
         if (self.settings.model_path and Path(self.settings.model_path).exists()
-                and not self.is_formalizer(self.settings.model_path)):
+                and not self.is_formalizer(self.settings.model_path) and not self.is_explainer(self.settings.model_path)):
             return Path(self.settings.model_path)
         vram = self.vram_total()
         goedel = [m for m in good if "goedel" in m.path.name.lower()]
@@ -204,7 +220,7 @@ class AppContext(QObject):
         if self.server.state == LlamaServer.READY and self.server.model_path == path:
             self._flush_ready()
             return
-        if not self.is_formalizer(path):           # the prover stays the default model across sessions
+        if not self.is_formalizer(path) and not self.is_explainer(path):   # the prover stays the default across sessions
             self.settings.model_path = str(path)
             self.save_later()
         self.with_gpu_info(lambda: self._start_server(path))
@@ -242,8 +258,8 @@ class AppContext(QObject):
         """Run `then` once the model for `role` ('prover' | 'formalizer') is loaded, switching models if needed."""
         target = self.role_model(role)
         if target is None:
-            if role == "formalizer":
-                self.banner.emit(friendly("no_formalizer"), "")
+            if role in ("formalizer", "explainer"):
+                self.banner.emit(friendly("no_" + role), "")
             else:
                 self.load_model(then=then)       # reports « Aucun modèle installé »
             return

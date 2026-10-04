@@ -98,3 +98,46 @@ def test_chat_stream_stops_a_loop(qtbot):
         assert LoopHandler.sent < 1500                  # stopped early, not after all 5000 chunks
     finally:
         httpd.shutdown()
+
+
+# ---------------------------------------------------------------- explanation helpers
+def test_explain_prompt_skips_header_and_mentions_original_statement():
+    code = "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 400000\n\ntheorem t : 1 = 1 := by\n  rfl\n"
+    p = lc.explain_prompt(code, "Montrer que 1 = 1.")
+    assert "import Mathlib" not in p and "theorem t : 1 = 1" in p and "Montrer que 1 = 1." in p
+    assert "EN FRANÇAIS" in p and "n'invente aucune étape" in p
+
+
+def test_clean_model_text_removes_think_blocks():
+    assert lc.clean_model_text("<think>\n\n</think>\n\nBonjour") == "Bonjour"
+    assert lc.clean_model_text("<think>réflexion qui ne finit pas") == ""
+    assert lc.clean_model_text("Texte") == "Texte"
+
+
+def test_has_real_proof():
+    assert not lc.has_real_proof("theorem t : 1 = 1 := by sorry")
+    assert not lc.has_real_proof("-- rien\n")
+    assert lc.has_real_proof("theorem t : 1 = 1 := by\n  rfl")
+    assert lc.has_real_proof("theorem t : 1 = 1 := rfl")
+
+
+def test_markdown_and_math_for_display_and_latex():
+    md = "**Énoncé.** Si $a \\ge 2^{10}$ et $x_1 \\in \\mathbb{N}$ (50%, n_1).\n\n1. On écrit `rcases`.\n2. Donc $a+b$.\n- fin"
+    shown = texio.display_markdown(md)
+    assert "a ≥ 2¹⁰" in shown and "x₁ ∈ ℕ" in shown and "$" not in shown
+    tex = texio.markdown_to_latex(md)
+    assert r"\textbf{Énoncé.}" in tex and r"50\%" in tex and r"n\_1" in tex and "$a \\ge 2^{10}$" in tex
+    assert r"\begin{enumerate}" in tex and r"\texttt{rcases}" in tex and r"\begin{itemize}" in tex
+
+
+@pytest.mark.skipif(not shutil.which("xelatex"), reason="xelatex not installed")
+def test_export_with_explanation_compiles(tmp_path):
+    expl = ("**Énoncé.** Si $a$ et $b$ sont pairs, $a+b$ l'est (100% sûr, f_1).\n\n1. On écrit $a = 2k$ et `rcases`.\n"
+            "2. Donc $a+b = 2(k+m) \\ge 0$.\n- fin & suite #1")
+    doc = texio.export_document("Soit $n$.", "theorem t : 1 = 1 := by sorry", "theorem t : 1 = 1 := by\n  rfl", "t",
+                                "Lean 4.9", explanation=expl)
+    (tmp_path / "t.tex").write_text(doc, encoding="utf-8")
+    r = subprocess.run(["xelatex", "-interaction=nonstopmode", "-halt-on-error", "t.tex"], cwd=tmp_path,
+                       capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stdout[-800:]
+    assert "Explication de la preuve" in doc and "Rédigée par une IA" in doc

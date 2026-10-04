@@ -78,3 +78,15 @@ Workspace: lean4web MathlibDemo (Lean 4.29) — run before lean-prover49 finishe
 Generation ≈ 44 tok/s, 310–340 tokens per translation. Switching prover ↔ formalizer on the 8 GB GPU: server restart ≈ 4–8 s.
 Whether a *compiling* translation is *faithful* is not measured here (only a human can judge): that is why the UI
 forces a « relisez » step.
+
+## 7. CPU only (no GPU) — Ryzen 7 7735HS, 8 threads, Goedel-Prover-V2-8B Q4_K_M, `llama-bench -ngl 0`
+| test | CPU | GPU (RTX 4060) | ratio |
+|---|---:|---:|---:|
+| prompt pp256 | 15.2 t/s | ≈ 1 850 t/s | ≈ 120 × |
+| generation tg32 | 5.1 t/s | ≈ 44 t/s | ≈ 9 × |
+
+A typical proof attempt (1–5 k tokens) therefore takes ≈ 4–16 min on the CPU instead of 0.5–2 min. The CPU path is what the
+installer builds with `--backend cpu` and what the app falls back to when no NVIDIA GPU is detected.
+
+## 8. Proof → French explanation (Qwen3-8B Q4_K_M, thinking off)
+10.6 s (439 tokens) for a 14-line proof, 19.0 s (787 tokens) for a 20-line proof; prover model unusable for this task (D15).

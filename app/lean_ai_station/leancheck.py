@@ -322,3 +322,44 @@ def detect_loop(text: str, min_chars: int = 600, min_reps: int = 5, max_unit: in
         need = min_chars if unit >= 60 else 2 * min_chars + 300
         return (unit, reps) if reps * unit >= need else None
     return None
+
+
+# ---------------------------------------------------------------- Lean proof -> plain-language explanation (general model)
+EXPLAIN_PROMPT = (
+    "Tu es un professeur de mathématiques. Voici un théorème écrit en Lean 4, avec une preuve que Lean a vérifiée.\n"
+    "Explique-le EN FRANÇAIS à un lecteur qui connaît les mathématiques mais ne connaît pas Lean :\n"
+    "1. énonce d'abord le théorème en langage mathématique courant ;\n"
+    "2. donne l'idée de la preuve en une ou deux phrases ;\n"
+    "3. commente ensuite les étapes dans l'ordre, sous forme de liste numérotée, en disant ce que fait chaque "
+    "tactique en termes mathématiques (par exemple « omega : calcul sur les entiers », « rcases : on extrait un témoin »).\n"
+    "Règles : réponds uniquement en français ; paragraphes simples ; formules en LaTeX entre $...$ ; "
+    "ne recopie pas le code Lean ; n'invente aucune étape qui n'est pas dans la preuve.\n"
+    "{nl}"
+    "\n```lean4\n{code}\n```"
+)
+
+
+def explain_prompt(lean_code: str, nl_statement: str = "") -> str:
+    code = lean_code.strip()
+    k = code.find("theorem")
+    if k > 0:
+        code = code[k:]          # skip the import/open header: noise for the explanation
+    nl = f"\nÉnoncé d'origine, en langage naturel : {nl_statement.strip()}\n" if nl_statement.strip() else ""
+    return EXPLAIN_PROMPT.format(nl=nl, code=code)
+
+
+def clean_model_text(text: str) -> str:
+    """Remove Qwen3 « <think> … </think> » blocks (also an unterminated one) and surrounding whitespace."""
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"<think>.*$", "", text, flags=re.DOTALL)
+    return text.strip()
+
+
+def has_real_proof(code: str) -> bool:
+    """True when the text contains a theorem whose proof is not just `sorry`."""
+    body = remove_comments(code)
+    m = re.search(r"\btheorem\b.*?:=\s*(?:by\b)?(.*)$", body, re.DOTALL)
+    if not m:
+        return False
+    rest = re.sub(r"\bsorry\b", "", m.group(1)).strip()
+    return len(rest) > 2

@@ -104,3 +104,29 @@
 - Overleaf: the instance on this machine answers 404 on 127.0.0.1:80 (OVERLEAF_SITE_URL is the Tailscale name) and
   an API import would need the user's login → no automation; the app exports a file / copies the code and opens the
   configurable URL (Système → adresse d'Overleaf). Passwords are never requested.
+
+## D15 — Proof → French explanation: a third, general model (Qwen3-8B), not the prover
+- Evidence (measured, same proof, same server): Goedel-Prover answered the English prompt in English with Markdown
+  headings and re-wrote the Lean proof; with a French prompt it mixed French and English ("In Lean, this is expressed as…");
+  with an assistant prefill it drifted back to "Step-by-Step Abstract Plan / Lean 4 Proof with have statements".
+  Qwen3-8B Q4_K_M (the base architecture family of both Goedel models, official `Qwen/Qwen3-8B-GGUF` @ 7c41481,
+  Apache-2.0) with the same prompt in French: fluent French, correct structure (statement / idea / numbered steps),
+  10.6 s and 19.0 s for the two test proofs.
+- Choice: `Explainer` service with `chat_template_kwargs.enable_thinking=false`, T 0.5, repeat_penalty 1.05, loop guard;
+  Markdown + `$math$` rendered in the GUI (math → Unicode), converted to safe LaTeX for the export (compile-tested).
+  The explanation is labelled « rédigée par une IA » everywhere; the Lean proof stays the authority.
+- Cost: one more 5 GB model (3 × 5 GB on disk, swapped in 8 GB VRAM). `--no-explainer` skips it; the button then explains
+  how to get the model.
+
+## D16 — Chat tab removed
+- The tab used the prover as a chat model, which it is not (it looped — user screenshot). Its value for the target user
+  (learning Lean) is now covered by the guided flow, the Aide dialog and « Expliquer ». Settings keys are ignored on load.
+
+## D17 — Portable installer
+- Evidence: fresh `git clone` + `./install.sh --install-deps --backend cpu` in a **Fedora 44 container** found two real
+  portability bugs (missing `libGL` for PySide6 wheels; a GUI test that depended on installed models) — both fixed.
+- `install.sh`: distro family from /etc/os-release (arch/fedora/debian/suse), package lists per family, `--backend
+  auto|cuda|cpu`, CUDA toolkit looked up in /opt/cuda, /usr/local/cuda*, retry with an older host compiler (g++-14…11) or
+  `-allow-unsupported-compiler` when CUDA rejects a newer GCC (known Fedora/Arch issue), PySide6 from the distribution if
+  importable else `PySide6-Essentials` in the venv, final start-up probe. Drivers and CUDA are never installed for the user.
+- Not covered: AMD/Intel GPUs (Vulkan/ROCm builds) — the app then runs on the CPU.

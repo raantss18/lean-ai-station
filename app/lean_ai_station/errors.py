@@ -76,6 +76,11 @@ MESSAGES = {
         "Avec Internet : ouvrez « Modèles » → téléchargez « mradermacher/Goedel-Formalizer-V2-8B-GGUF ». "
         "Sinon, écrivez directement l'énoncé en Lean dans la zone ②.",
         [("Ouvrir Modèles", "goto_models")], "warn"),
+    "no_explainer": Friendly(
+        "Le modèle d'explication n'est pas installé",
+        "Pour expliquer une preuve en français, il faut le modèle « Qwen3-8B » (≈ 5 Go). Avec Internet : ouvrez "
+        "« Modèles » → téléchargez « Qwen/Qwen3-8B-GGUF » (fichier Qwen3-8B-Q4_K_M.gguf).",
+        [("Ouvrir Modèles", "goto_models")], "warn"),
     "statement": Friendly(
         "Énoncé incomplet",
         "", [], "warn"),

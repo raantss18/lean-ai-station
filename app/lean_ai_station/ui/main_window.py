@@ -7,7 +7,6 @@ from PySide6.QtWidgets import QButtonGroup, QHBoxLayout, QMainWindow, QStackedWi
 
 from .. import __version__
 from . import theme
-from .chat import ChatPage
 from .help import HelpDialog
 from .home import HomePage
 from .lean_page import LeanPage
@@ -17,8 +16,8 @@ from .system_page import SystemPage
 from .widgets import Banner, Toast, button, label, shortcut
 from .wizard import Wizard
 
-NAV = [("home", "🏠  Accueil", "Ctrl+1"), ("lean", "∀  Lean", "Ctrl+2"), ("chat", "💬  Chat", "Ctrl+3"),
-       ("models", "📦  Modèles", "Ctrl+4"), ("server", "🖥  Serveur", "Ctrl+5"), ("system", "⚙  Système", "Ctrl+6")]
+NAV = [("home", "🏠  Accueil", "Ctrl+1"), ("lean", "∀  Lean", "Ctrl+2"), ("models", "📦  Modèles", "Ctrl+3"),
+       ("server", "🖥  Serveur", "Ctrl+4"), ("system", "⚙  Système", "Ctrl+5")]
 
 
 class MainWindow(QMainWindow):
@@ -94,7 +93,7 @@ class MainWindow(QMainWindow):
         ml.addWidget(sb)
         h.addWidget(main, 1)
 
-        self.pages = {"home": HomePage(ctx), "lean": LeanPage(ctx), "chat": ChatPage(ctx), "models": ModelsPage(ctx),
+        self.pages = {"home": HomePage(ctx), "lean": LeanPage(ctx), "models": ModelsPage(ctx),
                       "server": ServerPage(ctx), "system": SystemPage(ctx), "wizard": Wizard(ctx)}
         for p in self.pages.values():
             self.stack.addWidget(p)

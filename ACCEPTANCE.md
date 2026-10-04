@@ -84,6 +84,19 @@ batch, top-p…), mismatched « Réparer »/« Recompiler » wording. All visibl
 | Overleaf | exported file / copied code / configurable URL. **Not automated**: the local instance answers 404 on 127.0.0.1:80 and an API import would need the user's login | ⚠️ by design |
 | Faithfulness of a *compiling* translation | cannot be measured automatically → forced human review | ⚠️ limit |
 
+## G. Explanation, Chat removal, portability (added 2026-10-04, release 1.0.0)
+| Item | Evidence | Status |
+|---|---|---|
+| Proof → French explanation, real model | `test_integration.py::test_explain_in_french_with_real_model`; `docs/screenshots/10b_explication_en_francais.png`; 10.6 s / 19.0 s (BENCH §8) | ✅ |
+| Prover model rejected for explanation (English, re-writes Lean) | measured comparison in DECISIONS D15 | ✅ |
+| Explanation text → safe LaTeX (bold, lists, code, `%`, `_`, `&`, `#`) and included in the export | `test_markdown_and_math_for_display_and_latex`, `test_export_with_explanation_compiles` (XeLaTeX) | ✅ |
+| Chat tab removed | `test_chat_tab_is_gone` | ✅ |
+| Fresh `git clone` + `./install.sh --install-deps --backend cpu --no-models …` → app starts → fast tests | Fedora 44: 54 passed; Ubuntu 24.04: 54 passed; Ubuntu 22.04 (Python 3.10): 54 passed (9 skipped = need a Lean workspace/models) | ✅ |
+| Real defects found by those runs | missing `libGL` (Fedora/openSUSE), missing `libglib` (Ubuntu minimal), test depending on installed models | fixed |
+| CUDA build on non-Arch distributions | **not verified** (no NVIDIA GPU in the containers). Fallbacks for newer-GCC are coded (g++-14…11, `-allow-unsupported-compiler`) but untested | ⚠️ |
+| Debian, openSUSE, AMD/Intel GPUs | package lists written from distribution naming, **not tested**; AMD/Intel run on the CPU | ⚠️ |
+| CPU-only speed | 5.1 tok/s generation vs 44 on GPU (BENCH §7) | ✅ measured |
+
 ## Defects found by this acceptance loop and fixed (see DECISIONS D8–D11)
 1. Restart after a server crash loaded the model on the CPU (stale VRAM snapshot) → free VRAM computed excluding our own process.
 2. Race: model load before the first `nvidia-smi` reading → CPU → load now waits for a GPU snapshot.

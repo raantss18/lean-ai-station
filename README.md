@@ -27,14 +27,16 @@
    vous aviez en tête.
 3. Cliquez sur **« ✅ C'est bon : prouver »**. L'IA écrit une preuve ; si Lean la refuse, elle lit l'erreur, corrige et
    réessaie. Chaque essai est visible.
-4. Récupérez le résultat : **copier**, **enregistrer** en `.lean`, ou **exporter en LaTeX** (document prêt pour Overleaf
-   avec votre énoncé, sa version Lean et la preuve vérifiée).
+4. **« 💬 Expliquer en français »** : une IA raconte la preuve en langage courant, étape par étape (marche aussi sur une
+   preuve Lean que vous avez écrite ou collée).
+5. Récupérez le résultat : **copier**, **enregistrer** en `.lean`, ou **exporter en LaTeX** (document prêt pour Overleaf :
+   votre énoncé, sa version Lean, l'explication et la preuve vérifiée).
 
 ![Énoncé à relire](docs/screenshots/08_enonce_a_relire.png)
 ![Preuve trouvée](docs/screenshots/10_preuve_trouvee.png)
 
 Autres façons de s'en servir : glisser un fichier `.lean` ou `.tex` sur la fenêtre ; le bouton **✔ Vérifier** contrôle
-un fichier Lean que vous avez écrit ; l'onglet **Chat** permet de discuter avec le modèle.
+un fichier Lean que vous avez écrit.
 
 ### LaTeX et Overleaf
 
@@ -44,21 +46,43 @@ un fichier Lean que vous avez écrit ; l'onglet **Chat** permet de discuter avec
   choisissez le compilateur **XeLaTeX**. L'adresse de votre Overleaf se règle dans l'onglet *Système*.
 * L'outil ne se connecte pas lui-même à Overleaf : il n'a pas votre mot de passe et ne demande jamais de l'entrer.
 
+### Les trois IA (une seule en mémoire à la fois)
+
+| Tâche | Modèle | Pourquoi ce modèle |
+|---|---|---|
+| Écrire et corriger les preuves | Goedel-Prover-V2-8B | spécialisé en preuves Lean |
+| Traduire un problème en énoncé Lean | Goedel-Formalizer-V2-8B | même équipe, conçu pour cette tâche |
+| Expliquer une preuve en français | Qwen3-8B | modèle généraliste : le prouveur répondait en anglais et recopiait du Lean |
+
 ## Installer
 
-Testé sur EndeavourOS / Arch Linux avec une NVIDIA RTX 4060 (8 Go de mémoire graphique). Il faut une carte NVIDIA
-d'au moins 8 Go et environ 40 Go d'espace disque. L'installation ne demande **pas** `sudo` une fois les prérequis présents :
+Testé de bout en bout sur **EndeavourOS/Arch** avec une NVIDIA RTX 4060 (8 Go de mémoire graphique). Le script d'installation
+est aussi testé (installation à partir d'un clone neuf, moteur processeur, démarrage et tests) dans des conteneurs
+**Fedora 44, Ubuntu 24.04 et Ubuntu 22.04**, et prévu pour **Debian et openSUSE** (non testés), avec une carte NVIDIA (≥ 8 Go conseillés) ou, **sans carte graphique**,
+sur le processeur seul (fonctionne, mais beaucoup plus lent). Prévoyez ≈ 40 Go de disque.
 
 ```bash
-sudo pacman -S --needed nvidia-utils cuda base-devel cmake git python pyside6 zstd util-linux curl
 git clone https://github.com/raantss18/lean-ai-station.git ~/lean-ai-station
-cd ~/lean-ai-station && ./install.sh
+cd ~/lean-ai-station
+./install.sh --install-deps        # --install-deps : installe les outils de compilation avec sudo (une fois)
 ```
 
-`install.sh` (relançable sans risque) installe le gestionnaire Lean *elan* si besoin, compile le moteur d'IA *llama.cpp* pour
-votre carte graphique, télécharge les deux modèles (prouveur et traducteur, ≈ 5 Go chacun, empreintes SHA-256 vérifiées),
-prépare les deux espaces Lean et ajoute **« Lean AI Station » au menu des applications**. L'espace « Prouveur » compile
-Mathlib depuis les sources (≈ 1 h 30 de calcul, une seule fois). Options : `--q5`, `--no-prover49`, `--no-current`.
+**À installer vous-même avant** (le script ne touche jamais aux pilotes) : le **pilote NVIDIA** et le **CUDA Toolkit**
+(`nvcc`), sauf si vous choisissez `--backend cpu`.
+
+| Distribution | Pilote + CUDA |
+|---|---|
+| Arch / EndeavourOS | `sudo pacman -S nvidia-open nvidia-utils cuda` |
+| Fedora | pilote via RPM Fusion (`akmod-nvidia xorg-x11-drv-nvidia-cuda`), CUDA via le dépôt NVIDIA : <https://developer.nvidia.com/cuda-downloads> |
+| Debian / Ubuntu | `sudo apt install nvidia-driver-XXX nvidia-cuda-toolkit` (ou le dépôt NVIDIA) |
+| openSUSE | dépôt NVIDIA : <https://developer.nvidia.com/cuda-downloads> |
+
+`install.sh` (relançable sans risque) détecte votre distribution, installe le gestionnaire Lean *elan*, compile le moteur d'IA
+*llama.cpp* pour votre carte (version épinglée), prépare Python et l'interface, télécharge les trois modèles
+(≈ 5 Go chacun, empreintes SHA-256 vérifiées), prépare les deux espaces Lean et ajoute **« Lean AI Station » au menu des
+applications**. L'espace « Prouveur » compile Mathlib depuis les sources (≈ 1 h 30 de calcul, une seule fois).
+Options : `--backend cuda|cpu`, `--no-models`, `--no-translator`, `--no-explainer`, `--no-prover49`, `--no-current`, `--q5`
+(`./install.sh --help`).
 
 Lancement : menu des applications → **Lean AI Station** (ou `~/lean-ai-station/bin/lean-ai-station`).
 Au premier lancement, un assistant vérifie tout et fait un auto-test d'environ une minute.
@@ -71,8 +95,9 @@ Désinstallation : `./uninstall.sh` (liste exactement ce qui sera supprimé).
 * Le modèle (8 milliards de paramètres) réussit bien les exercices de lycée et de licence ; les problèmes d'olympiade
   échouent souvent. « Pas de preuve trouvée » ne signifie pas que l'énoncé est faux.
 * La traduction français → Lean peut changer le sens d'un énoncé tout en restant valide pour Lean : **relisez-la toujours**.
-* Deux modèles de 5 Go ne tiennent pas ensemble dans 8 Go de mémoire graphique : l'outil les charge à tour de rôle
+* Les modèles de 5 Go ne tiennent pas ensemble dans 8 Go de mémoire graphique : l'outil les charge à tour de rôle
   (quelques secondes à chaque changement).
+* **Sans carte NVIDIA, tout fonctionne mais lentement** : mesuré sur un Ryzen 7 (8 threads), ≈ 5 tokens/s en écriture contre ≈ 44 sur la RTX 4060 (et ≈ 15 contre ≈ 1 800 pour la lecture de la question) ; une preuve peut alors prendre de plusieurs minutes à plusieurs dizaines de minutes. Les cartes AMD/Intel ne sont pas utilisées pour l'instant.
 * Mesures, choix techniques et preuves de bon fonctionnement : `BENCH.md`, `DECISIONS.md`, `ACCEPTANCE.md`.
 
 ## Pour les développeurs

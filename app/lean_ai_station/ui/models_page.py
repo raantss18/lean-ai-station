@@ -135,7 +135,8 @@ class ModelsPage(QWidget):
                 st = ""
                 if loaded and Path(loaded) == m.path:
                     st = "🟢 Chargé" if self.ctx.server.state == "ready" else "🟡 Chargement…"
-                role = "traduction texte → Lean" if self.ctx.is_formalizer(m.path) else "preuves"
+                role = ("traduction texte → Lean" if self.ctx.is_formalizer(m.path) else
+                        "explication en français" if self.ctx.is_explainer(m.path) else "preuves")
                 vals = [f"{m.path.name}  ·  {role}", m.quant, human(m.size), fit, st]
             for c, v in enumerate(vals):
                 it = QTableWidgetItem(v)

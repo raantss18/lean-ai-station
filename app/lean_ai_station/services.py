@@ -1062,3 +1062,56 @@ class Formalizer(QObject):
         a.errors_text = "\n".join(f"ligne {m.line} : {m.text}" for m in res.verdict.errors)
         self.attemptUpdated.emit(i)
         QTimer.singleShot(0, self._next)
+
+
+# ---------------------------------------------------------------- Lean proof -> explanation in French (general model)
+class Explainer(QObject):
+    """Explain a verified Lean proof in plain French with a general-purpose model (Qwen3-8B).
+
+    The prover model cannot do this reliably (it answers in English and drifts back to writing Lean: measured,
+    see DECISIONS D15), so a separate instruction-following model is swapped in for this task."""
+    token = Signal(str)
+    finished = Signal(bool, str, str)      # ok, explanation (Markdown with $math$), French summary
+    infraError = Signal(str, str)
+
+    def __init__(self, server: LlamaServer, parent=None):
+        super().__init__(parent)
+        self.server = server
+        self.running = False
+        self._stream: ChatStream | None = None
+
+    def start(self, lean_code: str, nl_statement: str = ""):
+        if self.server.state != LlamaServer.READY:
+            self.infraError.emit("server_down", "")
+            return
+        self.running = True
+        s = ChatStream(self.server.url, self)
+        self._stream = s
+        s.delta.connect(self.token)
+        s.done.connect(self._done)
+        s.error.connect(self._error)
+        s.start([{"role": "user", "content": leancheck.explain_prompt(lean_code, nl_statement)}], 0.5, 0.9, 2000,
+                extra={"chat_template_kwargs": {"enable_thinking": False}, "repeat_penalty": 1.05})
+
+    def cancel(self):
+        if self.running and self._stream:
+            self._stream.cancel()
+
+    def _done(self, d: dict):
+        self.running = False
+        self._stream = None
+        text = leancheck.clean_model_text(d["text"])
+        if not text:
+            self.finished.emit(False, "", "L'IA n'a rien écrit : réessayez.")
+            return
+        note = " (réponse interrompue : l'IA tournait en rond)" if d.get("loop") else ""
+        self.finished.emit(True, text, f"Explication prête{note}.")
+
+    def _error(self, kind: str, det: str):
+        was = self.running
+        self.running = False
+        self._stream = None
+        if kind == "cancelled":
+            self.finished.emit(False, "", "Explication arrêtée.")
+        elif was:
+            self.infraError.emit("server_down" if kind in ("unreachable", "stalled") else "generation", det)

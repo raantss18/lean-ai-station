@@ -43,16 +43,6 @@ def test_banner_details_hidden_by_default(win):
     assert "Traceback" not in win.banner.msg.text()
 
 
-def test_chat_clear_is_undoable(win, qtbot):
-    chat = win.pages["chat"]
-    chat.history = [{"role": "user", "content": "bonjour"}]
-    chat.new_chat()
-    assert chat.history == []
-    assert win.toast.undo_btn.isVisible()
-    qtbot.mouseClick(win.toast.undo_btn, __import__("PySide6.QtCore", fromlist=["Qt"]).Qt.LeftButton)
-    assert chat.history and chat.history[0]["content"] == "bonjour"
-
-
 def test_editor_unicode_abbreviation(win, qtbot):
     from PySide6.QtCore import Qt
     lean = win.pages["lean"]
@@ -133,6 +123,9 @@ def test_disk_nearly_full_warns(win, monkeypatch):
 def test_home_button_sends_problem_to_translation(win, qtbot, monkeypatch):
     started = []
     monkeypatch.setattr(win.ctx, "ensure_model", lambda then, role="prover": started.append(role))   # no real model load
+    from pathlib import Path
+    monkeypatch.setattr(win.ctx, "formalizer_model", lambda: Path("/models/Goedel-Formalizer-V2-8B.Q4_K_M.gguf"))
+    monkeypatch.setattr(win.pages["lean"], "_need_ws", lambda: object())          # independent of what is installed
     got = []
     win.ctx.translateRequest.connect(got.append)
     home = win.pages["home"]
@@ -202,3 +195,31 @@ def test_formalizer_is_never_the_default_prover(win, tmp_path):
     ctx.settings.model_path = "/m/Goedel-Formalizer-V2-8B.Q4_K_M.gguf"
     assert "Prover" in str(ctx.default_model())
     assert "Formalizer" in str(ctx.formalizer_model())
+
+
+def test_explain_needs_a_proof_and_a_model(win, monkeypatch):
+    lean = win.pages["lean"]
+    lean.editor.setPlainText("theorem t : 1 = 1 := by sorry")
+    lean.explain_editor()
+    assert "pas encore de preuve" in lean.status_title.text() and not win.ctx.explainer.running
+    shown = []
+    win.ctx.banner.connect(lambda f, d: shown.append(f.title))
+    monkeypatch.setattr(win.ctx, "explainer_model", lambda: None)
+    lean.editor.setPlainText("theorem t : 1 = 1 := by\n  rfl")
+    lean.explain_editor()
+    assert shown and "explication" in shown[-1].lower() and lean.prove_btn.isEnabled()
+
+
+def test_chat_tab_is_gone(win):
+    assert "chat" not in win.pages and all(k != "chat" for k, _t, _s in NAV)
+
+
+def test_explainer_is_never_the_default_prover(win):
+    from pathlib import Path
+    from lean_ai_station.gguf import GGUFInfo
+    ctx = win.ctx
+    def info(name):
+        return GGUFInfo(Path(name), 5_000_000_000, name, "qwen3", "Q4_K_M", 36, 40960, 4096, 8, 128)
+    ctx.models = [info("/m/Qwen3-8B-Q4_K_M.gguf"), info("/m/Goedel-Prover-V2-8B.Q4_K_M.gguf")]
+    ctx.settings.model_path = "/m/Qwen3-8B-Q4_K_M.gguf"
+    assert "Prover" in str(ctx.default_model()) and "Qwen3" in str(ctx.explainer_model())

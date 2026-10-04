@@ -34,13 +34,15 @@ No root change was needed (D1) → no timeshift snapshot taken. Latest existing:
 - lean-prover49: Mathlib built from source (cache 404, D6) → logs/build_prover49.log.
 - lean-current: v4.34.1 cache get → logs/setup_current.log.
 
-## Status (2026-10-03 20:10): mission complete
-- Published: https://github.com/raantss18/lean-ai-station (public, Apache-2.0, clean single-commit `main`;
-  local full history kept in branch `dev-history`, NOT pushed: contains unredacted personal paths).
-- All acceptance items in ACCEPTANCE.md ✅ except "not verified / known limits" listed there.
+## Status (2026-10-04): release 1.0.0
+- Features: NL→Lean (Formalizer), prove (Prover), proof→French (Qwen3-8B), .tex in/out, loop guard, Chat tab removed,
+  multi-distro installer (Fedora 44 / Ubuntu 24.04 / 22.04 container-tested, CPU backend).
+- Release: tag v1.0.0 + GitHub release (see CHANGELOG.md). Local branch `dev-history` is NOT pushed (personal paths).
+- Acceptance: ACCEPTANCE.md sections A–G.
 
 ## Gotchas
 - NEVER `pkill -f`/`pgrep -f` with a pattern contained in the command itself (use "[x]yz" trick).
+- The user's own GUI instance may hold the GPU (7 GB): ask before closing it; tests need the GPU free.
 - New Lean prints "declaration uses `sorry`" with backticks; Lake 4.9 puts oleans in .lake/build/lib.
 - llama-server needs `-lv 4` to log "offloaded N/M layers to GPU".
 - Never connect a lambda that captures its own emitter (double delete).

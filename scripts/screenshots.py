@@ -89,7 +89,7 @@ def main():
     win.resize(1360, 860)
     win.show()
     ctx.gpu.start(2000)
-    lean, chat, wiz = win.pages["lean"], win.pages["chat"], win.pages["wizard"]
+    lean, wiz = win.pages["lean"], win.pages["wizard"]
 
     def shot(name):
         def f():
@@ -127,6 +127,9 @@ def main():
         ("prove", lambda: lean.ok_prove_btn.click(), lambda: lean._pending_prove or ctx.prover.running, 60),
         ("prove_live", shot("09_preuve_en_cours"), lambda: not ctx.prover.running and not lean._pending_prove, 1200),
         ("prove_done", shot("10_preuve_trouvee"), T, 1),
+        ("explain", lambda: lean.explain_final_btn.click(), lambda: lean._pending_explain or ctx.explainer.running, 60),
+        ("explain_live", lambda: None, lambda: not ctx.explainer.running and not lean._pending_explain, 400),
+        ("explain_done", shot("10b_explication_en_francais"), T, 1),
         ("tex_export", lambda: (TEXT_OUT.write_text(lean.latex_source(), encoding="utf-8")), T, 1),
         ("tex_import", seq(lambda: lean.nl_edit.clear(), lambda: _import_tex(lean, TEX)), T, 1),
         ("tex_import_s", shot("11_import_tex"), T, 1),
@@ -134,7 +137,6 @@ def main():
             "import Mathlib\n\ntheorem faux (a b : ℕ) : a + b = a * b := by\n  ring\n"), lambda: lean.verify()),
          lambda: not ctx.verifier.busy, 300),
         ("verify_err_s", shot("12_verification_erreur"), T, 1),
-        ("chat_empty", seq(lambda: win.navigate("chat"), lambda: chat.new_chat(), shot("13_chat_vide")), T, 1),
         ("models", seq(lambda: win.navigate("models"), shot("14_modeles")), T, 1),
         ("server", seq(lambda: win.navigate("server"), shot("15_serveur")), T, 1),
         ("system", lambda: win.navigate("system"), T, 3),

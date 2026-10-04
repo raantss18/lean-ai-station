@@ -16,6 +16,10 @@ ITEMS=(
   "$H/models/Goedel-Prover-V2-8B.Q4_K_M.gguf.sha256"
   "$H/models/Goedel-Prover-V2-8B.Q5_K_M.gguf"
   "$H/models/Goedel-Prover-V2-8B.Q5_K_M.gguf.sha256"
+  "$H/models/Goedel-Formalizer-V2-8B.Q4_K_M.gguf"        # translator model (+ checksum)
+  "$H/models/Goedel-Formalizer-V2-8B.Q4_K_M.gguf.sha256"
+  "$H/models/Qwen3-8B-Q4_K_M.gguf"                       # explanation model (+ checksum)
+  "$H/models/Qwen3-8B-Q4_K_M.gguf.sha256"
   "$H/models/src/Goedel-Prover-V2-8B"                    # partial official safetensors (abandoned download)
 )
 # Optional (shared with your other Lean projects): removed only with --toolchains

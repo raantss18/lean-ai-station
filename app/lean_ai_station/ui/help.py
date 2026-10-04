@@ -26,7 +26,8 @@ un fichier <code>.tex</code> pour reprendre un théorème, un lemme ou un exerci
 <b>Relisez-le</b> : c'est le seul moment où votre jugement est indispensable (voir plus bas).</li>
 <li>Cliquez sur <b>« C'est bon : prouver »</b>. L'IA cherche une preuve ; si Lean la refuse, elle lit ses
 erreurs, corrige et réessaie (jusqu'à 8 fois par défaut).</li>
-<li>Quand Lean accepte, vous pouvez <b>copier</b>, <b>enregistrer</b> ou <b>exporter en LaTeX</b> (compatible Overleaf).</li>
+<li>Quand Lean accepte, cliquez sur <b>« 💬 Expliquer en français »</b> : une IA raconte la preuve en langage courant,
+étape par étape. Vous pouvez aussi <b>copier</b>, <b>enregistrer</b> ou <b>exporter en LaTeX</b> (compatible Overleaf, explication incluse).</li>
 </ol>
 
 <h2>Pourquoi relire la traduction ?</h2>
@@ -58,6 +59,8 @@ les hypothèses, les nombres et la conclusion dans la zone ②.</p>
 <ul>
 <li>L'IA réussit bien les exercices de lycée et de licence ; les problèmes d'olympiade échouent souvent.</li>
 <li>« Je n'ai pas trouvé de preuve » ne veut pas dire que l'énoncé est faux.</li>
+<li>L'explication en français est écrite par une IA : elle peut être maladroite. La preuve Lean, elle, est vérifiée.</li>
+<li>Vous avez déjà une preuve Lean (écrite à la main ou copiée) ? Collez-la dans la zone ② et cliquez sur « 💬 Expliquer ».</li>
 <li>Tout fonctionne sans Internet : rien n'est envoyé à l'extérieur.</li>
 </ul>
 """

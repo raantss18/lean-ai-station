@@ -56,10 +56,8 @@ class Settings:
     overleaf_url: str = "http://127.0.0.1"
     compile_timeout_s: int = 180
     autoload_model: bool = True
-    chat_system_prompt: str = "Tu es un assistant de mathématiques et de Lean 4. Réponds en français, clairement."
     server: ServerSettings = field(default_factory=ServerSettings)
     sampling: SamplingSettings = field(default_factory=SamplingSettings)
-    chat_sampling: SamplingSettings = field(default_factory=lambda: SamplingSettings(0.6, 0.95, 4096))
 
 
 def _from_dict(cls, data: dict):

@@ -186,7 +186,7 @@ class SystemPage(QWidget):
                     None, None))
         good = [m for m in ctx.models if not isinstance(m, tuple)]
         bad = [m for m in ctx.models if isinstance(m, tuple)]
-        good = [m for m in good if not ctx.is_formalizer(m.path)]
+        good = [m for m in good if not ctx.is_formalizer(m.path) and not ctx.is_explainer(m.path)]
         out.append((bool(good), "Modèle d'IA installé (prouveur)",
                     f"{len(good)} modèle(s) prêt(s)" + (f", {len(bad)} illisible(s)" if bad else "") if good else
                     "Aucun modèle utilisable.", None if good else "Ouvrir Modèles", "goto_models"))
@@ -195,6 +195,10 @@ class SystemPage(QWidget):
                     fm.name if fm else "Absent : sans lui, écrivez l'énoncé directement en Lean. Avec Internet : "
                     "« Modèles » → mradermacher/Goedel-Formalizer-V2-8B-GGUF.",
                     None if fm else "Ouvrir Modèles", "goto_models"))
+        em = ctx.explainer_model()
+        out.append((em is not None, "Modèle d'explication en français (Qwen3-8B)",
+                    em.name if em else "Absent : le bouton « Expliquer » est indisponible. Avec Internet : "
+                    "« Modèles » → Qwen/Qwen3-8B-GGUF.", None if em else "Ouvrir Modèles", "goto_models"))
         for w in ctx.workspaces:
             if w.readonly:
                 continue

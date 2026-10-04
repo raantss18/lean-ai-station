@@ -37,7 +37,7 @@ WS=("$N/workspaces/lean-prover49")
 pack workspaces "$B" "${WS[@]}"
 # 4. models
 if [ $MODELS = 1 ]; then
-  pack models "$HOME" $(cd "$HOME" && ls models/Goedel-Prover-V2-8B.*.gguf models/Goedel-Prover-V2-8B.*.sha256 2>/dev/null)
+  pack models "$HOME" $(cd "$HOME" && ls models/Goedel-*.gguf models/Qwen3-8B-*.gguf models/*.gguf.sha256 2>/dev/null)
 fi
 cat > "$DEST/import_offline.sh" <<'EOF'
 #!/usr/bin/env bash

@@ -70,7 +70,7 @@ class Wizard(QWidget):
                            "Comptez environ une minute. Rien à installer ni à configurer à la main.", wrap=True))
         wl.addWidget(label("• Un modèle d'IA spécialisé (Goedel-Prover) écrit des preuves Lean.\n"
                            "• Lean vérifie chaque preuve : seules les preuves correctes sont acceptées.\n"
-                           "• Rien n'est envoyé sur Internet : l'IA fonctionne grâce à la carte graphique de cet ordinateur.", wrap=True))
+                           "• Rien n'est envoyé sur Internet : l'IA est un fichier installé chez vous, exécuté par la carte graphique (à défaut, le processeur).", wrap=True))
         self.pages.addWidget(w)
         # 1 detection
         d = QWidget()
@@ -286,7 +286,7 @@ class Wizard(QWidget):
         self.next.setEnabled(True)
         if oks == 3:
             self.ready_text.setText("Tout fonctionne. Sur l'écran d'accueil, cliquez sur « ▶ Prouver » sous un exercice "
-                                    "pour voir l'IA trouver une preuve vérifiée par Lean.\n\nRaccourcis : Ctrl+1 à Ctrl+6 "
+                                    "pour voir l'IA trouver une preuve vérifiée par Lean.\n\nRaccourcis : Ctrl+1 à Ctrl+5 "
                                     "pour changer d'onglet, Ctrl+Entrée pour vérifier, Ctrl+Maj+Entrée pour prouver, "
                                     "Échap pour arrêter.")
             QTimer.singleShot(600, lambda: self._show(4) if self.pages.currentIndex() == 3 else None)

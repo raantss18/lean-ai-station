@@ -140,3 +140,27 @@ def test_prover_restarts_after_a_loop(qtbot, fake_server, ws):
     assert blk.args[0]
     assert "tournait en rond" in p.attempts[0].summary
     assert len(Fake.requests[1]["messages"]) == 1                # restarted from the original task, no poisoned history
+
+
+def test_explainer_streams_and_cleans(qtbot, fake_server):
+    from lean_ai_station.services import Explainer
+    Fake.requests, Fake.script = [], [("ok", "<think>\n\n</think>\n\n**Énoncé.** La somme de deux pairs est paire.")]
+    e = Explainer(fake_server)
+    tokens = []
+    e.token.connect(tokens.append)
+    with qtbot.waitSignal(e.finished, timeout=30000) as blk:
+        e.start("import Mathlib\n\ntheorem t : 1 = 1 := by\n  rfl", "Montrer que 1 = 1.")
+    ok, text, summary = blk.args
+    assert ok and text == "**Énoncé.** La somme de deux pairs est paire." and tokens
+    req = Fake.requests[0]
+    assert req["chat_template_kwargs"] == {"enable_thinking": False}
+    assert "theorem t : 1 = 1" in req["messages"][0]["content"] and "import Mathlib" not in req["messages"][0]["content"]
+
+
+def test_explainer_without_server_reports_clearly(qtbot):
+    from lean_ai_station.services import Explainer
+    e = Explainer(LlamaServer())               # stopped server
+    got = []
+    e.infraError.connect(lambda k, d: got.append(k))
+    e.start("theorem t : 1 = 1 := rfl")
+    assert got == ["server_down"] and not e.running

@@ -35,7 +35,7 @@ class HomePage(QWidget):
         lay.addWidget(label("Vous décrivez un problème de mathématiques ; l'IA l'écrit dans le langage <b>Lean</b> puis "
                             "cherche une preuve ; <b>Lean</b>, un logiciel de vérification, contrôle chaque ligne. "
                             "Une preuve n'est jamais affichée comme « réussie » sans son feu vert.<br>"
-                            "Rien n'est envoyé sur Internet : l'IA fonctionne grâce à la carte graphique de cet ordinateur.",
+                            "Rien n'est envoyé sur Internet : l'IA est un fichier installé chez vous, exécuté par la carte graphique de l'ordinateur (à défaut, par son processeur).",
                             "Muted", wrap=True))
 
         card = Card(margins=18)
@@ -67,7 +67,7 @@ class HomePage(QWidget):
         steps = QHBoxLayout()
         for n, (t, d) in enumerate([("Vous décrivez", "Avec vos mots, ou en important un .tex. Vous pouvez aussi écrire directement du Lean."),
                                     ("L'IA traduit en Lean", "Elle écrit l'énoncé officiel ; vous le relisez et le corrigez avant de continuer."),
-                                    ("L'IA prouve, Lean vérifie", "Si Lean refuse une preuve, l'IA corrige et réessaie. Export LaTeX (Overleaf) possible.")], 1):
+                                    ("L'IA prouve, Lean vérifie", "Si Lean refuse une preuve, l'IA corrige et réessaie. Ensuite : explication en français, export LaTeX.")], 1):
             c = Card(margins=12)
             c.lay.addWidget(label(f"<b>{n}.  {t}</b>"))
             c.lay.addWidget(label(d, "Muted", wrap=True))
