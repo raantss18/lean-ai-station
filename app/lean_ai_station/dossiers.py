@@ -344,18 +344,21 @@ def with_lemmas(statement: str, entries: list[LibEntry]) -> str:
 
 # ---------------------------------------------------------------- router for follow-up requests
 _EXPLAIN = r"expli|détaill|detail|clarif|pourquoi|why|comprend|understand|étape|step|reformul|rephrase|simplif.*(texte|explication)|plus clair|clearer|en anglais|in english|en français|in french|vulgaris|intuition"
-_PROOF = r"preuve|proof|démonstr|demonstr|tactique|tactic|plus court|shorter|plus simple|simpler|autre méthode|another method|other approach|récurrence|induction|sans |without |linarith|nlinarith|omega|ring|simp\b|norm_num"
+_PROOF = r"preuve|proof|prouve|prove|démontr|demontr|démonstr|demonstr|réessa|reessa|essaie|essaye|retry|try again|recommence|encore|utilis|use |using|indice|hint|lemme|lemma|théorème des|theorem|tactique|tactic|plus court|shorter|plus simple|simpler|autre méthode|another method|other approach|récurrence|induction|sans |without |linarith|nlinarith|omega|ring|simp\b|norm_num"
 _STATEMENT = r"énoncé|enonce|statement|hypoth|suppos|assum|ajoute|add |retire|remove|enlève|change|remplace|replace|réel|real|entier|integer|naturel|natural|positif|positive|strict|inégalité|inequality|domaine|condition|traduction|translation|n ?[><≥≤]|mauvais|wrong|incorrect|faux"
 
 
 def route(request: str, has_proof: bool, has_explanation: bool) -> str:
-    """Decide which stage a follow-up request should redo: statement | proof | explanation."""
+    """Decide which stage a follow-up request should redo: statement | proof | explanation.
+
+    Without a proof (the search failed), a request about the statement re-translates it; anything else — « réessaie »,
+    « utilise le théorème des valeurs intermédiaires » — is a new proof search with the request given to the prover
+    as a hint (before 1.1.2 it was always re-translated, so the prover never saw the user's guidance)."""
     r = request.lower()
     score = {"statement": len(re.findall(_STATEMENT, r)), "proof": len(re.findall(_PROOF, r)),
              "explanation": len(re.findall(_EXPLAIN, r))}
     if not has_proof:
-        score["proof"] = score["explanation"] = 0      # nothing proven yet: only the statement can be refined
-        return "statement"
+        return "statement" if score["statement"] > score["proof"] else "proof"
     if not has_explanation and score["explanation"] and not score["proof"] and not score["statement"]:
         return "explanation"
     best = max(score, key=lambda k: (score[k], {"statement": 1, "proof": 2, "explanation": 0}[k]))

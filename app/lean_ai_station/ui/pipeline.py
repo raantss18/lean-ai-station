@@ -228,9 +228,11 @@ class Pipeline(QObject):
                 self._event("info", _("Résultats de votre bibliothèque proposés à l'IA : {names}.").format(
                     names=", ".join(e.title for e in used)))
             refine = (d.proof, req) if (req and d.proof_is_current) else None
+            hint = req if (req and not d.proof_is_current) else ""
             try:
                 self.ctx.prover.start(statement, self._ws, s.prove_attempts, s.sampling, s.compile_timeout_s,
-                                      self.ctx.server.plan.ctx if self.ctx.server.plan else s.server.ctx_size, refine=refine)
+                                      self.ctx.server.plan.ctx if self.ctx.server.plan else s.server.ctx_size, refine=refine,
+                                      hint=hint)
             except leancheck.StatementError as e:
                 self._fail(str(e))
         elif self.stage == "explanation":

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.2 — 2026-10-04
+
+**Corrections** (signalées : « les 8 essais reproduisent la même erreur », sur deux dossiers)
+- **Les essais s'enlisaient sur la même piste** : chaque essai corrigeait le précédent, jusqu'à 7 corrections d'affilée
+  de la même idée, et la conversation grossissait au point de ne laisser que ≈ 1 500 tokens de réponse (preuve coupée,
+  `sorry`, même erreur à chaque essai). Désormais : au plus 2 corrections par piste puis un nouvel essai depuis zéro
+  (comme Goedel-Prover-V2), nouveau départ immédiat si Lean renvoie exactement la même erreur, et au moins
+  8 192 tokens garantis par réponse.
+- **Les demandes après un échec n'atteignaient pas le prouveur** : « réessaie la preuve », « en utilisant les
+  propriétés algébriques… » étaient envoyées au traducteur (énoncé retraduit à l'identique) et le prouveur ne voyait
+  jamais l'indication. Elles relancent maintenant la recherche de preuve, avec la demande transmise au prouveur comme
+  indice ; seules les demandes qui portent sur l'énoncé (« ajoute l'hypothèse… ») le font retraduire.
+
 ## 1.1.1 — 2026-10-04
 
 **Corrections** (signalées avec une vidéo : « théorème de la base incomplète »)

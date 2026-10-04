@@ -781,6 +781,8 @@ class Attempt:
 
 
 class Prover(QObject):
+    MAX_CORRECTIONS = 2      # correction rounds on one line of attack, then a fresh sample (D24)
+    MIN_GEN_TOKENS = 8192    # never ask for an answer shorter than this: restart the conversation instead (D24)
     attemptStarted = Signal(int)
     token = Signal(int, str)
     attemptUpdated = Signal(int)
@@ -798,8 +800,9 @@ class Prover(QObject):
         self._mine = False
 
     def start(self, statement: str, ws: Workspace, n_attempts: int, sampling: config.SamplingSettings,
-              timeout_s: int, ctx: int, refine: tuple[str, str] | None = None):
-        """refine=(verified_proof, user_request): produce a new proof of the same statement following the request."""
+              timeout_s: int, ctx: int, refine: tuple[str, str] | None = None, hint: str = ""):
+        """refine=(verified_proof, user_request): produce a new proof of the same statement following the request.
+        hint: the user's guidance for a new search after a failed one (appended to the initial prompt)."""
         self.statement = leancheck.prepare_statement(statement)
         self.name = leancheck.theorem_name(self.statement)
         self.ws, self.n, self.sampling, self.timeout_s, self.ctx = ws, max(1, n_attempts), sampling, timeout_s, ctx
@@ -807,9 +810,15 @@ class Prover(QObject):
         if refine:
             self._base = leancheck.refine_messages(self.statement, *refine)
         else:
-            self._base = [{"role": "user", "content": leancheck.initial_prompt(self.statement)}]
+            self._base = [{"role": "user", "content": leancheck.initial_prompt(self.statement, hint)}]
         self.messages = list(self._base)
+        self._round, self._last_feedback = 0, None
         self._next()
+
+    def _restart(self):
+        """Fresh sample from the original task: forget the current line of attack and its errors."""
+        self.messages = list(self._base)
+        self._round, self._last_feedback = 0, None
 
     def cancel(self):
         if not self.running:
@@ -835,8 +844,9 @@ class Prover(QObject):
         nb = len(self._base)
         while est(self.messages) > budget - 2048 and len(self.messages) > nb + 2:
             del self.messages[nb:nb + 2]   # drop oldest assistant/user pair, keep the original task
-        if est(self.messages) > budget - 2048:
-            self.messages = list(self._base)
+        floor = min(self.MIN_GEN_TOKENS, self.sampling.max_tokens)
+        if est(self.messages) > budget - floor and len(self.messages) > nb:
+            self._restart()            # a correction would be cut short (seen: 1 556 tokens, then a `sorry` skeleton)
         return max(512, min(self.sampling.max_tokens, budget - est(self.messages)))
 
     def _next(self):
@@ -904,7 +914,7 @@ class Prover(QObject):
         if d.get("loop"):
             a.status, a.summary = "refusé", _("L'IA tournait en rond : essai interrompu, nouvel essai.")
             self.attemptUpdated.emit(i)
-            self.messages = list(self._base)
+            self._restart()
             QTimer.singleShot(0, self._next)
             return
         if code is None:
@@ -912,7 +922,7 @@ class Prover(QObject):
             a.summary = (_("Réponse trop longue, coupée avant le code Lean.") if a.finish_reason == "length"
                          else _("Le modèle n'a pas produit de code Lean."))
             self.attemptUpdated.emit(i)
-            self.messages = list(self._base)   # start over
+            self._restart()   # start over
             QTimer.singleShot(0, self._next)
             return
         try:
@@ -920,7 +930,7 @@ class Prover(QObject):
         except leancheck.StatementError as e:
             a.status, a.summary = "refusé", str(e)
             self.attemptUpdated.emit(i)
-            self.messages = list(self._base)
+            self._restart()
             QTimer.singleShot(0, self._next)
             return
         a.status = "compilation"
@@ -955,10 +965,15 @@ class Prover(QObject):
         feedback = leancheck.errors_for_feedback(res.code, res.verdict)
         a.errors_text = feedback
         self.attemptUpdated.emit(i)
-        self.messages = self.messages + [
-            {"role": "assistant", "content": a.raw},
-            {"role": "user", "content": leancheck.correction_prompt(i, feedback)},
-        ]
+        if self._round >= self.MAX_CORRECTIONS or feedback == self._last_feedback:
+            self._restart()            # same line of attack keeps failing: new sample instead of an 8th correction
+        else:
+            self._round += 1
+            self._last_feedback = feedback
+            self.messages = self.messages + [
+                {"role": "assistant", "content": a.raw},
+                {"role": "user", "content": leancheck.correction_prompt(self._round - 1, feedback)},
+            ]
         QTimer.singleShot(0, self._next)
 
 

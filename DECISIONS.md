@@ -207,3 +207,18 @@
   « Corriger l'énoncé » requests (they go to the formalizer with the previous statement, as before).
 - Limit: ambiguous names are resolved by the model (« théorème de Bézout » → curves, not the arithmetic identity); the
   user corrects it in the thread.
+
+## D24 — Prove loop: bounded correction chains, token floor, user hints (bug report, 2026-10-04)
+- Symptom: « les 8 essais reproduisent la même erreur ». Replayed on the user's dossier (cubic polynomial has a real
+  root, Lean 4.9): attempt 1 takes a bad line of attack, attempt 2 (correction) repeats it with the same errors, attempt
+  3 gets only 1 556 tokens because the conversation filled the 24k context (`_fit_messages` allowed down to ≈ 2k), so
+  it is cut and returns a `sorry` skeleton; every later attempt does the same.
+- Goedel-Prover-V2 is evaluated with a few self-correction rounds on top of independent samples, not with one ever
+  growing conversation. Now: at most 2 corrections per line of attack (`Prover.MAX_CORRECTIONS`), then a fresh sample;
+  a fresh sample immediately when Lean returns exactly the same feedback twice; and the conversation restarts instead of
+  requesting fewer than 8 192 tokens (`MIN_GEN_TOKENS`). Round numbers restart at 0 for each line of attack (Goedel's
+  « Round {n-1} » convention).
+- Router: before a proof exists, follow-ups were always sent to the formalizer (the statement was re-translated, the
+  prover never saw the request). Now only statement-related requests are; others start a new proof search with the
+  request appended to the initial prompt (`HINT_TEMPLATE`, the only addition to Goedel's prompt, used only when the
+  user wrote something).

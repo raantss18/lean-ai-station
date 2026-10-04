@@ -87,11 +87,15 @@ def declared_names(code: str) -> set[str]:
                           remove_comments(code)))
 
 
-def initial_prompt(statement: str) -> str:
+HINT_TEMPLATE = "\n\nThe user gives this hint for the proof (follow it if it helps): {hint}"
+
+
+def initial_prompt(statement: str, hint: str = "") -> str:
     # Goedel: statement.split(":= by")[0] + ":= by sorry"; rsplit = same text for a single theorem, and keeps the
     # complete preceding lemmas when library results are placed above the target theorem.
+    # A user hint (follow-up request after a failed search, D24) is the only addition to Goedel's prompt.
     formal = statement.rsplit(":= by", 1)[0] + ":= by sorry"
-    return INITIAL_TEMPLATE.format(formal)
+    return INITIAL_TEMPLATE.format(formal) + (HINT_TEMPLATE.format(hint=hint.strip()) if hint.strip() else "")
 
 
 def correction_prompt(round_idx: int, error_str: str) -> str:

@@ -33,6 +33,8 @@ def answer(body: dict) -> str:
         stmt = re.search(r"```lean4\n(.*?)```", first, re.DOTALL).group(1)
         sig = stmt[stmt.rindex("theorem"):].replace(":= by sorry", ":= by")
         tactic = "simpa using Even.add ha hb" if len(msgs) > 1 else "exact Even.add ha hb"
+        if BEHAVIOUR.get("fail_unless_hint") and "The user gives this hint" not in first:
+            tactic = "exact no_such_lemma ha hb"
         if "+ 0" in sig:
             tactic = "simpa using Even.add ha hb"
         return f"<think>plan</think>\n```lean4\n{sig}\n  {tactic}\n```"
@@ -224,3 +226,24 @@ def test_unknown_request_stops_and_asks_for_the_statement(qtbot, ctx):
     wait_idle(qtbot, ctx)
     assert d.statement and "lemme des bergers" in REQUESTS[0]["messages"][0]["content"]
     assert "a + b est pair" in REQUESTS[0]["messages"][0]["content"]
+
+
+def test_follow_up_after_a_failed_search_reaches_the_prover(qtbot, ctx):
+    """User report (1.1.1): after « Aucune preuve trouvée », « réessaie en utilisant … » was re-translated, so the
+    prover never saw the hint and repeated the same failure 8 times."""
+    p = ctx.pipeline
+    ctx.settings.prove_attempts = 2
+    BEHAVIOUR["fail_unless_hint"] = True
+    p.start("Montrer que la somme de deux entiers pairs est paire.")
+    qtbot.waitUntil(lambda: p.busy, timeout=5000)
+    wait_idle(qtbot, ctx)
+    d = p.dossier
+    assert not d.proof and kinds(d)[-1] == "error"
+    REQUESTS.clear()
+    stage = p.request("Réessaie la preuve en utilisant Even.add")
+    assert stage == "proof"
+    wait_idle(qtbot, ctx)
+    prompts = [r["messages"][0]["content"] for r in REQUESTS]
+    assert prompts[0].startswith("Complete the following Lean 4 code")            # no re-translation
+    assert "The user gives this hint for the proof (follow it if it helps): Réessaie la preuve en utilisant Even.add" in prompts[0]
+    assert d.proof_is_current and len(d.statements) == 1

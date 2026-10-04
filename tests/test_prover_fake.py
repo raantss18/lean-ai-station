@@ -164,3 +164,44 @@ def test_explainer_without_server_reports_clearly(qtbot):
     e.infraError.connect(lambda k, d: got.append(k))
     e.start("theorem t : 1 = 1 := rfl")
     assert got == ["server_down"] and not e.running
+
+
+def _wrong(tactic: str, pad: str = "") -> str:
+    return f"<think>{pad}</think>\nPlan.\n```lean4\ntheorem t (a b : ℕ) (h : a = b) : b = a := by\n  {tactic}\n```"
+
+
+def _history_lengths():
+    return [len(r["messages"]) for r in Fake.requests]
+
+
+def test_same_error_twice_restarts_from_a_fresh_sample(qtbot, fake_server, ws):
+    """User report (1.1.1): 8 attempts repeated the same error — corrections kept the failing line of attack."""
+    Fake.requests, Fake.script = [], [("ok", WRONG), ("ok", WRONG), ("ok", RIGHT)]
+    p = Prover(fake_server, LeanCompiler())
+    with qtbot.waitSignal(p.finished, timeout=300_000) as blk:
+        p.start("theorem t (a b : ℕ) (h : a = b) : b = a := by sorry", ws, 4, config.SamplingSettings(), 240, 24576)
+    assert blk.args[0]
+    assert _history_lengths() == [1, 3, 1]             # initial, correction (same error again) → fresh sample
+
+
+def test_at_most_two_corrections_per_line_of_attack(qtbot, fake_server, ws):
+    Fake.requests, Fake.script = [], [("ok", _wrong("exact h")), ("ok", _wrong("rfl")), ("ok", _wrong("simp")),
+                                      ("ok", RIGHT)]
+    p = Prover(fake_server, LeanCompiler())
+    with qtbot.waitSignal(p.finished, timeout=300_000) as blk:
+        p.start("theorem t (a b : ℕ) (h : a = b) : b = a := by sorry", ws, 5, config.SamplingSettings(), 240, 24576)
+    assert blk.args[0], [(a.status, a.errors_text[:100]) for a in p.attempts]
+    assert _history_lengths() == [1, 3, 5, 1]
+    rounds = [r["messages"][-1]["content"][:22] for r in Fake.requests[1:3]]
+    assert rounds == ["The proof (Round 0) is", "The proof (Round 1) is"]
+
+
+def test_correction_never_starved_of_tokens(qtbot, fake_server, ws):
+    """A long previous answer left 1 556 tokens for the next one (cut short → `sorry` skeleton): start over instead."""
+    Fake.requests, Fake.script = [], [("ok", _wrong("exact h", pad="x" * 30000)), ("ok", RIGHT)]
+    p = Prover(fake_server, LeanCompiler())
+    with qtbot.waitSignal(p.finished, timeout=300_000) as blk:
+        p.start("theorem t (a b : ℕ) (h : a = b) : b = a := by sorry", ws, 3, config.SamplingSettings(), 240, 16384)
+    assert blk.args[0]
+    assert _history_lengths() == [1, 1]
+    assert all(r["max_tokens"] >= 8192 for r in Fake.requests)

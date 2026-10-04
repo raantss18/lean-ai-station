@@ -60,6 +60,7 @@ No root change was needed (D1) → no timeshift snapshot taken. Latest existing:
 - [x] T9 tests: unit + fake-server pipeline + real-model e2e + i18n coverage + GUI; screenshots FR/EN
 - [x] T11 updates: weekly check (Mathlib, Goedel models), notification, one-click install with verification, automatic deletion of obsolete versions (D21)
 - [x] T12 (1.1.1) bug report video: « comprendre » step (D23), circular reasoning detector + exact detector false positive (D22)
+- [x] T13 (1.1.2) bug report « même erreur » : correction chains ≤ 2, same-feedback restart, 8192-token floor, hints to the prover (D24)
 - [x] T10 docs (README FR/EN, CHANGELOG, DECISIONS, ACCEPTANCE), version 1.1.0, tag + GitHub release
 
 ### Resume point v1.1 (usage limit, 2026-10-04)

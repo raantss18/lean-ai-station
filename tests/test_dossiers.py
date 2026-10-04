@@ -84,7 +84,14 @@ def test_router():
     assert r("why does omega work here?", True, True) in ("explanation", "proof")
     assert r("explique", True, False) == "explanation"
     assert r("n'importe quoi", True, True) == "proof"
-    assert r("explique la preuve", False, False) == "statement"      # nothing proven yet
+    # nothing proven yet (user report, 1.1.1): retries and hints go to the prover, statement changes to the translator
+    assert r("reessaie la preuve", False, False) == "proof"
+    assert r("OK en utilisant les propriete algebrique d'un polynome a coefficient dans R réessaye la preuve",
+             False, False) == "proof"
+    assert r("utilise le théorème des valeurs intermédiaires", False, False) == "proof"
+    assert r("ajoute l'hypothèse n > 0", False, False) == "statement"
+    assert r("l'énoncé est faux, il manque une hypothèse", False, False) == "statement"
+    assert r("explique la preuve", False, False) == "proof"
 
 
 def test_dossier_json_is_readable(tmp_path):
