@@ -452,6 +452,9 @@ UNDERSTAND_PROMPT = (
     "Rewrite the user's request below as ONE precise mathematical statement to prove:\n"
     "- introduce every object with its type and every hypothesis (for example « Let K be a field and V a "
     "finite-dimensional vector space over K »);\n"
+    "- keep the direction of every implication exactly as the user wrote it: first find what is ASSUMED and what "
+    "must be CONCLUDED (« un carré pair est issu d'un entier pair » means: if n² is even then n is even — not the "
+    "converse);\n"
     "- if the request names a known theorem or result (in any language), state that theorem in its standard "
     "textbook form, with all its hypotheses; when a name has several meanings, choose the most elementary one "
     "(the one taught first at school or university);\n"
@@ -460,21 +463,79 @@ UNDERSTAND_PROMPT = (
     "- if the request is already a precise statement, translate it into English without changing its meaning "
     "(keep its numbers, variables and formulas);\n"
     "- keep formulas in LaTeX between $...$;\n"
-    "- do not prove it, do not name it, do not comment, do not add anything else.\n"
-    "Answer with the statement only.\n"
+    "- do not prove it, do not name it, do not comment.\n"
+    "Answer in exactly this format (two lines):\n"
+    "EN: <the statement in English>\n"
+    "{lang_tag}: <the same statement in {lang_name}>\n"
     "{profile}"
     "\nUser request:\n{problem}"
 )
 
+LANG_NAMES = {"fr": ("FR", "French"), "en": ("EN2", "English")}
 
-def understand_messages(problem: str, profile: str = "") -> list[dict]:
+
+def understand_messages(problem: str, profile: str = "", lang: str = "fr") -> list[dict]:
     """Conversation for the general model: user's words -> precise, self-contained statement (given to the formalizer)."""
     prof = f"Conventions of the user (respect them): {profile.strip()}\n" if profile.strip() else ""
-    return [{"role": "user", "content": UNDERSTAND_PROMPT.format(profile=prof, problem=problem.strip())}]
+    tag, name = LANG_NAMES.get(lang, LANG_NAMES["fr"])
+    return [{"role": "user", "content": UNDERSTAND_PROMPT.format(profile=prof, problem=problem.strip(), lang_tag=tag,
+                                                                 lang_name=name)}]
+
+
+def parse_understood(text: str) -> tuple[str, str]:
+    """(English statement for the formalizer, statement in the user's language for display)."""
+    en = re.search(r"(?m)^\s*EN:\s*(.+(?:\n(?!\s*(?:FR|EN2):).+)*)", text)
+    disp = re.search(r"(?m)^\s*(?:FR|EN2):\s*(.+(?:\n(?!\s*EN:).+)*)", text)
+    eng = en.group(1).strip() if en else text.strip()
+    return eng, (disp.group(1).strip() if disp else eng)
+
+
+ROUTE_PROMPT = (
+    "You assist a user who proves theorems with Lean 4. The current theorem is:\n{theorem}\n"
+    "Its Lean statement is:\n```lean4\n{lean}\n```\n"
+    "{status}\n"
+    "The user now writes: « {message} »\n\n"
+    "Decide what the user wants:\n"
+    "- STATEMENT: to prove a different or modified theorem: the converse, adding or removing a hypothesis "
+    "(« ajoute l'hypothèse n > 0 » is STATEMENT), another conclusion, other numbers or types, a correction because the "
+    "current theorem is not what they meant, a new question;\n"
+    "- PROOF: the same theorem, with another proof (shorter, simpler, another method, a hint, try again);\n"
+    "- EXPLANATION: only a change in the plain-language explanation.\n"
+    "Compare the user's message with the current theorem carefully: if the user states a theorem whose hypothesis and "
+    "conclusion differ from the current one (for example the converse), the answer is STATEMENT.\n"
+    "Answer in exactly this format:\n"
+    "ACTION: STATEMENT or PROOF or EXPLANATION\n"
+    "EN: <only for STATEMENT: the complete new theorem as one precise self-contained statement in English, with "
+    "every object, type and hypothesis, stated directly (do not refer to the previous theorem)>\n"
+    "{lang_tag}: <only for STATEMENT: the same statement in {lang_name}>"
+)
+
+
+def route_messages(theorem: str, lean: str, proven: bool, message: str, lang: str = "fr") -> list[dict]:
+    tag, name = LANG_NAMES.get(lang, LANG_NAMES["fr"])
+    status = "Lean has verified a proof of it." if proven else "No proof has been found yet."
+    sig = lean[lean.rfind("theorem"):] if "theorem" in lean else lean
+    return [{"role": "user", "content": ROUTE_PROMPT.format(theorem=theorem.strip() or "(see the Lean statement)",
+                                                            lean=sig.strip(), status=status, message=message.strip(),
+                                                            lang_tag=tag, lang_name=name)}]
+
+
+def parse_route(text: str) -> tuple[str, str, str] | None:
+    """(stage, English statement, display statement) or None when the answer is unusable."""
+    m = re.search(r"ACTION:\s*(STATEMENT|PROOF|EXPLANATION)", text, re.I)
+    if not m:
+        return None
+    stage = {"STATEMENT": "statement", "PROOF": "proof", "EXPLANATION": "explanation"}[m.group(1).upper()]
+    if stage != "statement":
+        return stage, "", ""
+    eng, disp = parse_understood(text[m.end():])
+    if not eng or eng.upper().startswith(("ACTION", "<")) or len(eng) < 8:
+        return None
+    return stage, eng, disp
 
 
 def is_unknown(understood: str) -> bool:
-    return understood.strip().strip(".").upper() == "UNKNOWN"
+    return parse_understood(understood)[0].strip().strip(".").upper() == "UNKNOWN"
 
 
 def formalize_input(problem: str, profile: str = "", previous: str = "", request: str = "") -> str:

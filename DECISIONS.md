@@ -239,3 +239,27 @@
   from suggestions, never wrongly reported, because only names Lean itself rejected are looked up.
 - Lean 4.9 reports `T.foo x` with `T` a type (`Real`, `Nat`, `Eq`) as « invalid field notation » without the name:
   the name is then read from the `<error>` span of that error.
+
+## D26 — Follow-up messages are read by the general model (bug report, 2026-10-04)
+- Symptom: « Montre qu'un carré pair est issu d'un entier pair » was rewritten as the converse by the « comprendre »
+  step, then « et la réciproque », « et si n^2 est pair montre que n est pair », « J'ai dis montre que si n^2 est pair
+  alors n est aussi pair » were all routed to `proof` by the keyword router (no statement keyword; a proof existed), so
+  the same theorem was proved three more times.
+- Understanding: the prompt now asks to identify what is assumed and what must be concluded (with this very example)
+  and to answer `EN:` (for the formalizer) + `FR:` (shown in the thread, in the interface language). Measured on Qwen3
+  (CPU): the three phrasings give « If n² is even, then n is even »; real-model test `test_task7_direction_and_converse`
+  proves `Even (n^2) → Even n`.
+- Routing: in « Auto » mode, a follow-up goes first to the general model with the current theorem, its Lean statement
+  and whether it is proven; it answers ACTION: STATEMENT | PROOF | EXPLANATION and, for STATEMENT, the complete new
+  theorem (EN + user language). A new statement is then translated afresh (no « previous formalization » anchoring),
+  proved and explained; the explanation now uses the understood statement rather than the original problem. Measured:
+  10/11 messages classified as intended; the miss (« pourquoi utilises-tu ring ? » → PROOF) is overridden by the
+  keyword router when it has explicit explanation/statement keywords and no proof keyword. Cost: one model switch per
+  follow-up (≈ 5–15 s). The manual stage selector and quick-action buttons bypass it, as before.
+- Rejected names (D25 addendum): the 1.1.3 note reached the model only inside a correction; every fresh sample
+  (after 2 corrections or a repeated error) started without it, so `Polynomial.exists_root` came back. Names rejected by
+  Lean are now kept for the whole search and appended to the first message of each fresh sample. Lean 4.34 writes
+  « Unknown identifier `x` » (capital, backticks): both wordings are recognised.
+- Live run on the user's cubic: the model also kept the rejected name inside its corrections, despite the note. Reusing
+  a name Lean already rejected in this search now ends the line of attack at once: fresh sample, with the warning at
+  the top of the task.

@@ -205,3 +205,32 @@ def test_correction_never_starved_of_tokens(qtbot, fake_server, ws):
     assert blk.args[0]
     assert _history_lengths() == [1, 1]
     assert all(r["max_tokens"] >= 8192 for r in Fake.requests)
+
+
+def test_invented_names_are_recalled_in_fresh_samples(qtbot, fake_server, ws):
+    """User report (1.1.3): `unknown constant 'Polynomial.exists_root'` came back attempt after attempt — each fresh
+    sample forgot what Lean had rejected. Rejected names are now recalled in every new sample of the search."""
+    invented = _wrong("exact my_invented_symm_lemma h")
+    Fake.requests, Fake.script = [], [("ok", invented), ("ok", invented), ("ok", RIGHT)]
+    p = Prover(fake_server, LeanCompiler())
+    with qtbot.waitSignal(p.finished, timeout=300_000) as blk:
+        p.start("theorem t (a b : ℕ) (h : a = b) : b = a := by sorry", ws, 4, config.SamplingSettings(), 240, 24576)
+    assert blk.args[0]
+    assert _history_lengths() == [1, 3, 1]                       # same error twice → fresh sample…
+    first = Fake.requests[2]["messages"][0]["content"]
+    assert first.startswith("Complete the following Lean 4 code")
+    assert "do not use them: `my_invented_symm_lemma`" in first     # …which is told what does not exist
+    assert "do not use them" not in Fake.requests[0]["messages"][0]["content"]
+
+
+def test_reusing_a_rejected_name_starts_a_fresh_sample(qtbot, fake_server, ws):
+    """Live run (1.1.4): the model kept `Polynomial.exists_root` in its corrections despite the note."""
+    a = _wrong("exact my_invented_symm_lemma h")
+    b = _wrong("exact (my_invented_symm_lemma h).trans rfl")     # another proof, same invented name
+    Fake.requests, Fake.script = [], [("ok", a), ("ok", b), ("ok", RIGHT)]
+    p = Prover(fake_server, LeanCompiler())
+    with qtbot.waitSignal(p.finished, timeout=300_000) as blk:
+        p.start("theorem t (a b : ℕ) (h : a = b) : b = a := by sorry", ws, 4, config.SamplingSettings(), 240, 24576)
+    assert blk.args[0]
+    assert _history_lengths() == [1, 3, 1]
+    assert "do not use them: `my_invented_symm_lemma`" in Fake.requests[2]["messages"][0]["content"]

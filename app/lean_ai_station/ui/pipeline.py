@@ -5,12 +5,12 @@ from __future__ import annotations
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from .. import leancheck
-from ..dossiers import Dossier, DossierStore, Library, closure, route, with_lemmas
+from ..dossiers import Dossier, DossierStore, Library, closure, route, route_scores, with_lemmas
 from ..errors import friendly
 from ..i18n import _, language
 
 STAGES = ("statement", "proof", "explanation")
-ROLE = {"understand": "explainer", "statement": "formalizer", "proof": "prover", "explanation": "explainer"}
+ROLE = {"understand": "explainer", "route": "explainer", "statement": "formalizer", "proof": "prover", "explanation": "explainer"}
 
 
 class Pipeline(QObject):
@@ -123,16 +123,25 @@ class Pipeline(QObject):
             self._event("user", text, stage="statement")
             self._run([("understand", ""), ("statement", ""), ("proof", ""), ("explanation", "")])
             return "statement"
+        if stage == "auto" and self.ctx.role_model("explainer") is not None \
+                and self.ctx.role_model("formalizer") is not None:
+            self._event("user", text, stage="auto")
+            self._run([("route", text)])            # the general model reads the message (D26)
+            return "auto"
         if stage == "auto":
             stage = route(text, d.proof_is_current, bool(d.explanation))
         self._event("user", text, stage=stage)
+        self._run(self._plan(stage, text))
+        return stage
+
+    def _plan(self, stage: str, text: str) -> list[tuple[str, str]]:
+        d = self.dossier
         plan = {"statement": [("statement", text), ("proof", ""), ("explanation", "")],
                 "proof": [("proof", text), ("explanation", "")],
                 "explanation": [("explanation", text)]}[stage]
         if stage == "explanation" and not d.proof_is_current:
             plan = [("proof", ""), ("explanation", text)]
-        self._run(plan)
-        return stage
+        return plan
 
     def set_statement(self, code: str):
         """The user edited the Lean statement by hand."""
@@ -214,7 +223,9 @@ class Pipeline(QObject):
         self._pending = False
         d, s, req = self.dossier, self.ctx.settings, self._request
         if self.stage == "understand":
-            self.ctx.explainer.understand(d.problem, s.profile)
+            self.ctx.explainer.understand(d.problem, s.profile, language())
+        elif self.stage == "route":
+            self.ctx.explainer.route(d.understood or d.problem, d.statement, d.proof_is_current, req, language())
         elif self.stage == "statement":
             previous = d.statement if req else ""
             self.ctx.formalizer.start(d.understood or d.problem, self._ws, s.translate_attempts, s.compile_timeout_s, name=d.theorem,
@@ -237,7 +248,7 @@ class Pipeline(QObject):
                 self._fail(str(e))
         elif self.stage == "explanation":
             prev = d.explanation if req else ""
-            self.ctx.explainer.start(d.proof, d.problem, language(), s.profile, prev, req)
+            self.ctx.explainer.start(d.proof, d.understood or d.problem, language(), s.profile, prev, req)
 
     def _fail(self, text: str):
         self.queue = []
@@ -255,6 +266,9 @@ class Pipeline(QObject):
 
     # ------------------------------------------------------------ results
     def _understood(self, ok: bool, text: str):
+        if self.stage == "route":
+            self._routed(ok, text)
+            return
         if self.stage != "understand":
             return
         if ok and leancheck.is_unknown(text):
@@ -263,9 +277,35 @@ class Pipeline(QObject):
                          "finie se complète en une base »."))
             return
         if ok and text.strip():
-            self.dossier.understood = text.strip()
+            eng, disp = leancheck.parse_understood(text)
+            self.dossier.understood = eng
             self._event("understood", _("Problème compris ainsi (c'est ce texte que l'IA traduit en Lean) :") + "\n"
-                        + text.strip())
+                        + disp)
+        QTimer.singleShot(0, self._next)
+
+    def _routed(self, ok: bool, text: str):
+        d, req = self.dossier, self._request
+        parsed = leancheck.parse_route(text) if ok else None
+        kw = route(req, d.proof_is_current, bool(d.explanation))
+        sc = route_scores(req)
+        if parsed is None:
+            stage, eng, disp = kw, "", ""
+        else:
+            stage, eng, disp = parsed
+            if stage == "proof" and kw != "proof" and sc[kw] and not sc["proof"]:
+                stage = kw                     # the model missed an explicit « pourquoi » / « hypothèse »
+        for e in reversed(d.events):           # show the decision on the user's message
+            if e.kind == "user":
+                e.stage = stage
+                break
+        if stage == "statement" and eng:
+            d.understood = eng
+            self._event("understood", _("Nouvel énoncé compris ainsi (c'est ce texte que l'IA traduit en Lean) :")
+                        + "\n" + disp)
+            plan = [("statement", ""), ("proof", ""), ("explanation", "")]
+        else:
+            plan = self._plan(stage, req)
+        self.queue = plan
         QTimer.singleShot(0, self._next)
 
     def _translated(self, ok: bool, summary: str):

@@ -829,4 +829,10 @@ EN: dict[str, str] = {
         'Problem understood as follows (this is the text the AI translates into Lean):',
     '⓪ Compréhension du problème…':
         '⓪ Understanding the problem…',
+    "L'IA décide s'il faut un nouvel énoncé, une autre preuve ou une autre explication.":
+        'The AI decides whether you want a new statement, another proof or another explanation.',
+    'Lecture de votre demande…':
+        'Reading your request…',
+    "Nouvel énoncé compris ainsi (c'est ce texte que l'IA traduit en Lean) :":
+        'New statement understood as follows (this is the text the AI translates into Lean):',
 }

@@ -24,7 +24,7 @@ _DECL = re.compile(
 _NS = re.compile(r"^namespace\s+(\S+)")
 _END = re.compile(r"^end(?:\s+(\S+))?\s*$")
 _SECTION = re.compile(r"^(?:noncomputable\s+)?section(?:\s+(\S+))?\s*$")
-_UNKNOWN = re.compile(r"unknown (?:constant|identifier) '([^']+)'")
+_UNKNOWN = re.compile(r"[Uu]nknown (?:constant|identifier) [`'‘]([^`'’]+)[`'’]")   # Lean 4.9 and Lean 4.34 wordings
 _BLOCK = re.compile(r"<error>\s*@?([A-Za-z_][\w.'₀-₉]*)(.*?)</error>.*?Error Message: ([^\n]*)", re.S)
 _TOKEN = re.compile(r"[A-Za-z0-9]+")
 
@@ -139,15 +139,7 @@ class NameIndex:
 
     def feedback_note(self, feedback: str, n: int = 5) -> str:
         """Extra paragraph for the correction prompt, naming existing declarations close to the unknown ones."""
-        missing = []
-        for name in _UNKNOWN.findall(feedback):
-            if name not in missing and name not in self.sig:
-                missing.append(name)
-        # Lean 4.9 reports `Real.foo_bar x` (Real being a type) as « invalid field notation », without the name
-        for name, _rest, msg in _BLOCK.findall(feedback):
-            if ("invalid field notation" in msg or "unknown" in msg) and "." in name and name not in self.sig \
-                    and name not in missing:
-                missing.append(name)
+        missing = missing_names(feedback, self)
         parts = []
         for name in missing[:3]:
             sugg = self.suggest(name, n)
@@ -159,6 +151,33 @@ class NameIndex:
             parts.append(f"`{name}` does not exist in this version of Mathlib. Existing declarations with close names "
                          f"(check that their statements fit before using them):\n{lines}")
         return ("\n\nNote on unknown names:\n" + "\n\n".join(parts)) if parts else ""
+
+
+def missing_names(feedback: str, idx: NameIndex | None = None) -> list[str]:
+    """Names that Lean rejected as non-existent in a feedback text (checked against the index when there is one)."""
+    out: list[str] = []
+    for name in _UNKNOWN.findall(feedback):
+        if name not in out and (idx is None or name not in idx.sig):
+            out.append(name)
+    if idx is not None:
+        # Lean 4.9 reports `Real.foo_bar x` (Real being a type) as « invalid field notation », without the name
+        for name, _rest, msg in _BLOCK.findall(feedback):
+            if ("invalid field notation" in msg or "unknown" in msg) and "." in name and name not in idx.sig \
+                    and name not in out:
+                out.append(name)
+    return out
+
+
+def avoid_note(bad: list[str], idx: NameIndex | None = None) -> str:
+    """Reminder added to a fresh sample: names already rejected by Lean in this search (D25)."""
+    if not bad:
+        return ""
+    items = []
+    for name in bad[:8]:
+        sugg = idx.suggest(name, 3) if idx is not None else []
+        items.append(f"`{name}`" + (f" (existing names nearby: {', '.join(f'`{s}`' for s in sugg)})" if sugg else ""))
+    return ("\n\nWarning from earlier attempts: these names do not exist in this version of Mathlib, do not use "
+            "them: " + "; ".join(items) + ". If the fact you need is not in Mathlib, prove it directly.")
 
 
 def _tokens(name: str) -> list[str]:

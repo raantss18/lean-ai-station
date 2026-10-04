@@ -2,6 +2,7 @@
 
 slow: needs the GPU model and a built Lean workspace."""
 import os
+import re
 import shutil
 from pathlib import Path
 
@@ -120,6 +121,36 @@ def test_task6_named_theorem_is_understood_before_translation(app_win, qtbot):
     assert "LinearIndependent" in sig and ("Basis" in sig or "span" in sig or "⊤" in sig), sig
     assert "¬" not in sig, sig                                   # not the « too many vectors » theorem
     assert c.n == 1
+
+
+def test_task7_direction_and_converse(app_win, qtbot):
+    """User report (1.1.3): « un carré pair est issu d'un entier pair » was understood backwards, and three follow-ups
+    asking for the other direction re-proved the same theorem."""
+    w = app_win
+    if w.ctx.explainer_model() is None or w.ctx.formalizer_model() is None:
+        pytest.skip("explainer or formalizer not installed")
+    w.ctx.settings.prove_attempts = 4
+    w.navigate("home")
+    w.pages["home"].nl.setPlainText("Montre qu'un carré pair est issu d'un entier pair")
+    qtbot.mouseClick(w.pages["home"].big, Qt.LeftButton)
+    p = w.ctx.pipeline
+    qtbot.waitUntil(lambda: p.busy, timeout=10_000)
+    qtbot.waitUntil(lambda: not p.busy, timeout=1_800_000)
+    d = p.dossier
+    sig = d.statement[d.statement.find("theorem"):]
+    print(f"TASK7a understood={d.understood!r}\nstatement={sig!r}\nproof={d.proof_is_current}")
+    concl = re.split(r"→|:", sig.split(":=")[0])[-1].strip()
+    assert concl == "Even n" and "^" in sig, sig                                  # n² even ⇒ n even
+    lean = w.pages["lean"]
+    lean.input.setPlainText("et la réciproque")
+    qtbot.mouseClick(lean.send_btn, Qt.LeftButton)
+    qtbot.waitUntil(lambda: p.busy, timeout=10_000)
+    qtbot.waitUntil(lambda: not p.busy, timeout=1_800_000)
+    sig2 = d.statement[d.statement.find("theorem"):]
+    print(f"TASK7b understood={d.understood!r}\nstatement={sig2!r}\nproof={d.proof_is_current}")
+    concl2 = re.split(r"→|:", sig2.split(":=")[0])[-1].strip()
+    assert len(d.statements) == 2 and ("^" in concl2 or "n * n" in concl2), sig2  # n even ⇒ n² even
+    assert [e.stage for e in d.events if e.kind == "user"][-1] == "statement"
 
 
 def test_task2_load_other_model(app_win, qtbot):

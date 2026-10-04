@@ -348,15 +348,19 @@ _PROOF = r"preuve|proof|prouve|prove|démontr|demontr|démonstr|demonstr|réessa
 _STATEMENT = r"énoncé|enonce|statement|hypoth|suppos|assum|ajoute|add |retire|remove|enlève|change|remplace|replace|réel|real|entier|integer|naturel|natural|positif|positive|strict|inégalité|inequality|domaine|condition|traduction|translation|n ?[><≥≤]|mauvais|wrong|incorrect|faux"
 
 
+def route_scores(request: str) -> dict[str, int]:
+    r = request.lower()
+    return {"statement": len(re.findall(_STATEMENT, r)), "proof": len(re.findall(_PROOF, r)),
+            "explanation": len(re.findall(_EXPLAIN, r))}
+
+
 def route(request: str, has_proof: bool, has_explanation: bool) -> str:
     """Decide which stage a follow-up request should redo: statement | proof | explanation.
 
     Without a proof (the search failed), a request about the statement re-translates it; anything else — « réessaie »,
     « utilise le théorème des valeurs intermédiaires » — is a new proof search with the request given to the prover
     as a hint (before 1.1.2 it was always re-translated, so the prover never saw the user's guidance)."""
-    r = request.lower()
-    score = {"statement": len(re.findall(_STATEMENT, r)), "proof": len(re.findall(_PROOF, r)),
-             "explanation": len(re.findall(_EXPLAIN, r))}
+    score = route_scores(request)
     if not has_proof:
         return "statement" if score["statement"] > score["proof"] else "proof"
     if not has_explanation and score["explanation"] and not score["proof"] and not score["statement"]:

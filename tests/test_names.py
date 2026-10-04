@@ -44,6 +44,7 @@ def test_suggestions_and_feedback_note():
     assert note.startswith("\n\nNote on unknown names:") and "does not exist in this version of Mathlib" in note
     assert "- `Polynomial.exists_root_of_degree_eq_one` (h : degree p = 1) : ∃ x, IsRoot p x" in note
     assert idx.feedback_note("Error Message: type mismatch") == ""
+    assert names.missing_names("error: Unknown identifier `exists_root_odd`") == ["exists_root_odd"]   # Lean 4.34
     # Lean 4.9 wording when the namespace is also a type: the name is only inside the <error> markers
     fb49 = ("Corresponding Code:\n```lean4\n  exact <error>Polynomial.exists_root_of_odd_degree hP</error>\n```\n\n"
             "Error Message: invalid field notation, type is not of the form (C ...) where C is a constant\n")

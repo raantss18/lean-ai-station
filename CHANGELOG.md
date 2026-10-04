@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.4 — 2026-10-04
+
+**Corrections** (signalées : « il fait toujours la réciproque », « unknown constant qui se répète »)
+- **Sens de l'implication** : « un carré pair est issu d'un entier pair » était compris à l'envers (« le carré d'un
+  entier pair est pair »). La consigne de l'étape « comprendre » impose maintenant de repérer ce qui est supposé et ce
+  qui est à conclure, et l'énoncé compris est **affiché en français** dans le fil (l'anglais reste pour le traducteur).
+- **Les demandes de suivi sont lues par l'IA** (Qwen3) au lieu d'un tri par mots-clés : « et la réciproque », « j'ai
+  dit : si n² est pair alors n est pair » produisent un **nouvel énoncé** (affiché, retraduit, prouvé, expliqué) au lieu
+  de reprouver le même théorème. « Preuve plus courte », « réessaie avec… » relancent la preuve ; « explique… »
+  l'explication. Les mots-clés restent en secours (réponse inutilisable ou modèle absent).
+- **Noms inventés qui reviennent à chaque essai** : les noms refusés par Lean pendant une recherche sont maintenant
+  rappelés dans chaque nouvel essai (« ces noms n'existent pas… », avec les vrais noms proches), au lieu d'être oubliés
+  à chaque nouveau départ ; si le modèle réutilise quand même un nom refusé, l'outil abandonne cette piste et repart
+  de zéro avec l'avertissement. Le message du Lean récent (`Unknown identifier` avec des accents graves) est aussi reconnu.
+
 ## 1.1.3 — 2026-10-04
 
 **Amélioration** (demandée après la 1.1.2)

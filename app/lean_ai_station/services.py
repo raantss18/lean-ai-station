@@ -813,13 +813,17 @@ class Prover(QObject):
             self._base = [{"role": "user", "content": leancheck.initial_prompt(self.statement, hint)}]
         self.messages = list(self._base)
         self._round, self._last_feedback = 0, None
+        self._bad_names: list[str] = []         # names Lean rejected during this search, recalled in fresh samples
         names.get(ws)                  # start indexing the workspace's declarations (for « unknown constant » errors)
         self._next()
 
     def _restart(self):
-        """Fresh sample from the original task: forget the current line of attack and its errors."""
+        """Fresh sample from the original task: forget the current line of attack, but not the invented names."""
         self.messages = list(self._base)
         self._round, self._last_feedback = 0, None
+        note = names.avoid_note(getattr(self, "_bad_names", []), names.get(self.ws))
+        if note:
+            self.messages[0] = {**self.messages[0], "content": self.messages[0]["content"] + note}
 
     def cancel(self):
         if not self.running:
@@ -965,11 +969,16 @@ class Prover(QObject):
         a.status = "refusé"
         feedback = leancheck.errors_for_feedback(res.code, res.verdict)
         idx = names.get(self.ws)
+        missing = names.missing_names(feedback, idx)
+        repeated = any(n in self._bad_names for n in missing)   # told it does not exist, used it again
+        for n in missing:
+            if n not in self._bad_names:
+                self._bad_names.append(n)
         if idx is not None:
             feedback += idx.feedback_note(feedback)      # real Mathlib names close to the invented ones (D25)
         a.errors_text = feedback
         self.attemptUpdated.emit(i)
-        if self._round >= self.MAX_CORRECTIONS or feedback == self._last_feedback:
+        if self._round >= self.MAX_CORRECTIONS or feedback == self._last_feedback or repeated:
             self._restart()            # same line of attack keeps failing: new sample instead of an 8th correction
         else:
             self._round += 1
@@ -1150,8 +1159,15 @@ class Explainer(QObject):
         self.mode = "explain"
         self._stream: ChatStream | None = None
 
-    def understand(self, problem: str, profile: str = ""):
+    def understand(self, problem: str, profile: str = "", lang: str = "fr"):
         """Rewrite the user's request as a precise, self-contained statement before the formalizer sees it."""
+        self._short(leancheck.understand_messages(problem, profile, lang), 0.3)
+
+    def route(self, theorem: str, lean: str, proven: bool, message: str, lang: str = "fr"):
+        """Read a follow-up message: new theorem (with its statement), new proof, or new explanation (D26)."""
+        self._short(leancheck.route_messages(theorem, lean, proven, message, lang), 0.2)
+
+    def _short(self, messages: list[dict], temperature: float):
         if self.server.state != LlamaServer.READY:
             self.infraError.emit("server_down", "")
             return
@@ -1160,8 +1176,7 @@ class Explainer(QObject):
         self._stream = s
         s.done.connect(self._done)
         s.error.connect(self._error)
-        s.start(leancheck.understand_messages(problem, profile), 0.3, 0.9, 600,
-                extra={"chat_template_kwargs": {"enable_thinking": False}})
+        s.start(messages, temperature, 0.9, 700, extra={"chat_template_kwargs": {"enable_thinking": False}})
 
     def start(self, lean_code: str, nl_statement: str = "", lang: str = "fr", profile: str = "",
               previous: str = "", request: str = ""):
@@ -1203,8 +1218,8 @@ class Explainer(QObject):
         self.running = False
         self._stream = None
         if self.mode == "understand":
-            if kind == "cancelled" or was:
-                self.understood.emit(False, "")     # the pipeline then uses the user's own words (or stops if cancelled)
+            if kind != "cancelled" and was:
+                self.understood.emit(False, "")     # the pipeline goes on with the user's own words / the keywords
         elif kind == "cancelled":
             self.finished.emit(False, "", _("Explication arrêtée."))
         elif was:
